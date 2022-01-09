@@ -134,6 +134,16 @@ private:
 	// rasterize a point
 	void rasterize_point(float x, float y, Color color);
 
+	void line_helper_1(bool flipped,
+                  float x0, float y0,
+                  float x1, float y1,
+                  Color color);
+	
+	void line_helper_2(bool flipped,
+                  float x0, float y0,
+                  float x1, float y1,
+                  Color color);
+
 	// rasterize a line
 	void rasterize_line(float x0, float y0,
 		float x1, float y1,

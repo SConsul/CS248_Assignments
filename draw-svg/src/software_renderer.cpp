@@ -276,6 +276,41 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
   render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
 
 }
+void SoftwareRendererImp::line_helper_1(bool flipped,
+                  float x0, float y0,
+                  float x1, float y1,
+                  Color color){
+  int dx  = x1 - x0,
+  dy  = y1 - y0,
+  y   = y0,
+  eps = 0;
+  for ( int x = x0; x <= x1; x++ )  {
+    if (flipped) rasterize_point(x,y,color);
+    else rasterize_point(y,x,color);
+    eps += dy;
+    if ( (eps << 1) >= dx )  {
+      y++;  eps -= dx;
+    }
+  }
+}
+
+void SoftwareRendererImp::line_helper_2(bool flipped,
+                  float x0, float y0,
+                  float x1, float y1,
+                  Color color){
+  int dx  = x1 - x0,
+  dy  = y1 - y0,
+  y   = y0,
+  eps = 0;
+  for ( int x = x0; x <= x1; x++ )  {
+    if (flipped) rasterize_point(x,y,color);
+    else rasterize_point(y,x,color);
+    eps += dy;
+    if ( (eps << 1) <= -dx )  {
+      y--;  eps += dx;
+    }
+  }
+}
 
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
@@ -284,9 +319,51 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
   ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+  
+  // float m = (y1-y0)/(x1-x0);
+  // if(m>=0){
+  //   if(x1<x0){//order points st. pt0 is to the left of pt1
+  //     swap(x0,x1); swap(y0,y1);
+  //   }
+  //   if(m<1) line_helper_1(false, x0,y0,x1,y1,color); //increment x
+  //   else line_helper_1(true, y0,x0,y1,x1,color); //increment y
+  // }
+  // else{
 
+  //   if(m>-1){
+  //     if(x1<x0){//order points st. pt0 is to the left of pt1
+  //       swap(x0,x1); swap(y0,y1);
+  //     }
+  //     line_helper_2(false, x0,y0,x1,y1,color); //increment x
+  //   }
+  //   else {
+  //     if(y1<y0){//order points st. pt0 is below pt1
+  //       swap(x0,x1); swap(y0,y1);
+  //     }
+  //     line_helper_2(true, y0,x0,y1,x1,color); //increment y
+
+  //   }
+  // }
   // Advanced Task
   // Drawing Smooth Lines with Line Width
+}
+
+bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y){
+  if(windDir){
+    for(int i=0; i<3; i++){
+      if((A[i]*x - B[i]*y + C[i]) < 0){
+        return false;
+      }
+    }
+  }
+  else{
+    for(int i=0; i<3; i++){
+      if((A[i]*x - B[i]*y + C[i]) > 0){
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
@@ -295,6 +372,32 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               Color color ) {
   // Task 1: 
   // Implement triangle rasterization
+  float A[3], B[3], C[3];
+  A[0] = y1-y0;
+  A[1] = y2-y1;
+  A[2] = y0-y2;
+
+  B[0] = x1-x0;
+  B[1] = x2-x1;
+  B[2] = x0-x2;
+
+  C[0] = y0*B[0] - x0*A[0];
+  C[1] = y1*B[1] - x1*A[1];
+  C[2] = y2*B[2] - x2*A[2];
+
+  bool windDir = (A[0]*x2 - B[0]*y2 + C[0]) > 0;
+
+  int minX = floor(min(x0, min(x1, x2)));
+  int maxX = floor(max(x0, max(x1, x2)))+1;
+  int minY = floor(min(y0, min(y1, y2)));
+  int maxY = floor(max(y0, max(y1, y2)))+1;
+
+  for (int x = minX; x<=maxX;x++){
+    for (int y = minY; y<=maxY;y++){
+      float cx = x+0.5, cy = y+0.5;
+      if(pointInTriangle(A, B, C, windDir, cx,cy)) rasterize_point(x,y,color);
+    }
+  }
 
   // Advanced Task
   // Implementing Triangle Edge Rules
