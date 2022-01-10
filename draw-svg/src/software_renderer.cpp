@@ -10,13 +10,21 @@
 using namespace std;
 
 namespace CS248 {
-
+vector<unsigned char> supersample_target; 
 
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
 void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
   // Task 2: implement this function
+  // check bounds
+	if (sx < 0 || sx >= target_w*this->sample_rate) return;
+	if (sy < 0 || sy >= target_h*this->sample_rate) return;
+
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate)] = (uint8_t) (color.r * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] = (uint8_t) (color.g * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] = (uint8_t) (color.b * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t) (color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -45,7 +53,7 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-
+  printf("Inside draw_svg");
   // set top level transformation
   transformation = canvas_to_screen;
 
@@ -79,7 +87,9 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
   // Task 2: 
   // You may want to modify this for supersampling support
   this->sample_rate = sample_rate;
-
+  supersample_target.resize(4*this->target_h*sample_rate*this->target_w*sample_rate);
+  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  // printf("Inside set_sample_rate");
 }
 
 void SoftwareRendererImp::set_render_target( unsigned char* render_target,
@@ -91,6 +101,8 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->target_w = width;
   this->target_h = height;
 
+  supersample_target.resize(4*height*sample_rate*width*sample_rate);
+  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
 }
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
@@ -392,10 +404,17 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
   int minY = floor(min(y0, min(y1, y2)));
   int maxY = floor(max(y0, max(y1, y2)))+1;
 
-  for (int x = minX; x<=maxX;x++){
-    for (int y = minY; y<=maxY;y++){
-      float cx = x+0.5, cy = y+0.5;
-      if(pointInTriangle(A, B, C, windDir, cx,cy)) rasterize_point(x,y,color);
+  for (int x = minX; x<=maxX; x++){
+    for (int y = minY; y<=maxY; y++){
+      for(int i=0; i<sample_rate; i++){
+        for(int j=0; j<sample_rate; j++){
+      
+          float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
+          if(pointInTriangle(A, B, C, windDir, cx,cy)) {
+            fill_sample(x*sample_rate+i,y*sample_rate+j,color);
+          }
+        }
+      }
     }
   }
 
@@ -414,10 +433,31 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
 
 // resolve samples to render target
 void SoftwareRendererImp::resolve( void ) {
-
   // Task 2: 
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 2".
+  for(int x=0; x<this->target_w; x++){
+    for(int y=0; y<this->target_h; y++){
+      Color avg_color;
+      for(int i=0; i<sample_rate; i++){
+        for(int j=0; j< sample_rate; j++){
+          float sx = x*this->sample_rate+i,  sy = y*this->sample_rate+j;
+          avg_color.r += supersample_target[4*(sx+sy*target_w*sample_rate)];
+          avg_color.g += supersample_target[4*(sx+sy*target_w*sample_rate)+1]; 
+          avg_color.b += supersample_target[4*(sx+sy*target_w*sample_rate)+2];
+          avg_color.a += supersample_target[4*(sx+sy*target_w*sample_rate)+3];  
+        }
+      }
+      avg_color *= 1/(sample_rate*sample_rate);
+      render_target[4 * (x + y * target_w)] = avg_color.r;
+      render_target[4 * (x + y * target_w) + 1] = avg_color.g;
+	    render_target[4 * (x + y * target_w) + 2] = avg_color.b;
+	    render_target[4 * (x + y * target_w) + 3] = 255;
+
+      // fill_pixel(x,y,avg_color);
+    }
+  }
+  // supersample_target.clear(); //free buffer of supersamples
   return;
 
 }
