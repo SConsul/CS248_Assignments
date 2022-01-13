@@ -297,8 +297,8 @@ void SoftwareRendererImp::line_helper_1(bool flipped,
   y   = y0,
   eps = 0;
   for ( int x = x0; x <= x1; x++ )  {
-    if (flipped) rasterize_point(x,y,color);
-    else rasterize_point(y,x,color);
+    if (flipped) rasterize_point(y,x,color);
+    else rasterize_point(x,y,color);
     eps += dy;
     if ( (eps << 1) >= dx )  {
       y++;  eps -= dx;
