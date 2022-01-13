@@ -30,7 +30,7 @@ void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
 	pixel_color.b = supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] * inv255;
 	pixel_color.a = supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] * inv255;
 
-	pixel_color = ref->alpha_blending_helper(pixel_color, color);
+	pixel_color = alpha_blending(pixel_color, color);
 
 	supersample_target[4 * (sx + sy * target_w*this->sample_rate)] = (uint8_t)(pixel_color.r * 255);
 	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
@@ -561,8 +561,17 @@ Color SoftwareRendererImp::alpha_blending(Color pixel_color, Color color)
 {
   // Task 5
   // Implement alpha compositing
+  float eps = 1e-5;
+  pixel_color.a = 1.0 - (1.0-color.a)*(1-pixel_color.a);
+
+  pixel_color.r = (1.0-color.a)*pixel_color.r*pixel_color.a + color.r*color.a;
+  pixel_color.g = (1.0-color.a)*pixel_color.g*pixel_color.a + color.g*color.a;
+  pixel_color.b = (1.0-color.a)*pixel_color.b*pixel_color.a + color.b*color.a;
+
+  pixel_color.r = pixel_color.r/(pixel_color.a+eps);
+  pixel_color.g = pixel_color.g/(pixel_color.a+eps);
+  pixel_color.b = pixel_color.b/(pixel_color.a+eps);
   return pixel_color;
 }
-
 
 } // namespace CS248
