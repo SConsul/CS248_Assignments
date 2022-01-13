@@ -93,6 +93,7 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   // draw all elements
   for (size_t i = 0; i < svg.elements.size(); ++i) {
     draw_element(svg.elements[i]);
+
   }
 
   // draw canvas outline
@@ -165,7 +166,7 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 
 	// Task 3 (part 1):
 	// Modify this to implement the transformation stack
-
+  transformation = transformation* element->transform;
 	switch (element->type) {
 	case POINT:
 		draw_point(static_cast<Point&>(*element));
@@ -194,7 +195,7 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 	default:
 		break;
 	}
-
+  transformation = transformation* element->transform.inv();
 }
 
 
