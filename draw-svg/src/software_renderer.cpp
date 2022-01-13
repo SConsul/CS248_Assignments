@@ -401,6 +401,8 @@ float rfpart(float x){
 void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
+  // reference: https://en.wikipedia.org/wiki/Xiaolin_Wu's_line_algorithm
+  
   bool steep = abs(y1-y0)>abs(x1-x0);
   if(steep){
     swap(x0,y0); swap(x1,y1);
