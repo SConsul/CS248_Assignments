@@ -387,13 +387,83 @@ void SoftwareRendererImp::line_helper_2(bool flipped,
   }
 }
 
+float round(float x){
+  return floor(x+0.5);
+}
+float fpart(float x){
+  return x - floor(x);
+}
+
+float rfpart(float x){
+  return 1 - fpart(x);
+}
+
+void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
+                                          float x1, float y1,
+                                          Color color) {
+  bool steep = abs(y1-y0)>abs(x1-x0);
+  if(steep){
+    swap(x0,y0); swap(x1,y1);
+  }
+  if(x0>x1){
+    swap(x0,x1); swap(y0,y1);
+  }
+  float dx = x1-x0, dy = y1-y0;
+  float grad = 0.0;
+  if(dx==0) grad = 1.0;
+  else grad = dy/dx;
+
+  float xend = round(x0);
+  float yend = y0 + grad*(xend-x0);
+  float xgap = rfpart(x0+0.5);
+  float xpxl1 = xend, ypxl1 = floor(yend);
+
+  if(steep){
+    rasterize_point(ypxl1,   xpxl1, rfpart(yend) * xgap*color);
+    rasterize_point(ypxl1+1,   xpxl1, fpart(yend) * xgap*color);
+  }
+  else{
+    rasterize_point(xpxl1, ypxl1  , rfpart(yend) * xgap*color);
+    rasterize_point(xpxl1, ypxl1+1  , fpart(yend) * xgap*color);
+  }
+
+  float intery = yend + grad;
+  xend = round(x1);
+  yend = y1+grad*(xend-x1);
+  xgap = fpart(x1+0.5);
+  float xpxl2 = xend, ypxl2 = floor(yend);
+  if(steep){
+    rasterize_point(ypxl2  , xpxl2, rfpart(yend) * xgap*color);
+    rasterize_point(ypxl2+1, xpxl2,  fpart(yend) * xgap*color);
+  }
+  else{
+    rasterize_point(xpxl2, ypxl2,  rfpart(yend) * xgap*color);
+    rasterize_point(xpxl2, ypxl2+1, fpart(yend) * xgap*color);
+  }
+
+  if(steep){
+    for(int x=xpxl1+1; x<=xpxl2-1;x++){
+      rasterize_point(floor(intery)  , x, rfpart(intery)*color);
+      rasterize_point(floor(intery)+1, x,  fpart(intery)*color);
+      intery += grad;
+    }
+  }
+  else{
+    for(int x=xpxl1+1; x<=xpxl2-1;x++){
+      rasterize_point(x, floor(intery),  rfpart(intery)*color);
+      rasterize_point(x, floor(intery)+1, fpart(intery)*color);
+      intery += grad;
+    }
+  }
+return;
+}
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
 
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
-  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+  // ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
 
   // float m = (y1-y0)/(x1-x0);
   // if(m>=0){
@@ -425,6 +495,7 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
   // }
   // Advanced Task
   // Drawing Smooth Lines with Line Width
+  xiaolin_wu_line(x0, y0, x1, y1, color);
 }
 
 bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y){
