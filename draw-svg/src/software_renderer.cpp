@@ -1,3 +1,4 @@
+// black 0,  white 255, a => 0 transparent, 255 opaque
 #include "software_renderer.h"
 
 #include <cmath>
@@ -18,13 +19,23 @@ vector<unsigned char> supersample_target;
 void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
   // Task 2: implement this function
   // check bounds
+  // cout << "Calling fill_sample" << endl;
 	if (sx < 0 || sx >= target_w*this->sample_rate) return;
 	if (sy < 0 || sy >= target_h*this->sample_rate) return;
 
-	supersample_target[4 * (sx + sy * target_w*this->sample_rate)] = (uint8_t) (color.r * 255);
-	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] = (uint8_t) (color.g * 255);
-	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] = (uint8_t) (color.b * 255);
-	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t) (color.a * 255);
+  Color pixel_color;
+	float inv255 = 1.0 / 255.0;
+	pixel_color.r = supersample_target[4 * (sx + sy * target_w*this->sample_rate)] * inv255;
+	pixel_color.g = supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] * inv255;
+	pixel_color.b = supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] * inv255;
+	pixel_color.a = supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] * inv255;
+
+	pixel_color = ref->alpha_blending_helper(pixel_color, color);
+
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate)] = (uint8_t)(pixel_color.r * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] = (uint8_t)(pixel_color.b * 255);
+	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -36,20 +47,33 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 	if (x < 0 || x >= target_w) return;
 	if (y < 0 || y >= target_h) return;
 
-	Color pixel_color;
-	float inv255 = 1.0 / 255.0;
-	pixel_color.r = render_target[4 * (x + y * target_w)] * inv255;
-	pixel_color.g = render_target[4 * (x + y * target_w) + 1] * inv255;
-	pixel_color.b = render_target[4 * (x + y * target_w) + 2] * inv255;
-	pixel_color.a = render_target[4 * (x + y * target_w) + 3] * inv255;
+	// Color pixel_color;
+	// float inv255 = 1.0 / 255.0;
+	// pixel_color.r = render_target[4 * (x + y * target_w)] * inv255;
+	// pixel_color.g = render_target[4 * (x + y * target_w) + 1] * inv255;
+	// pixel_color.b = render_target[4 * (x + y * target_w) + 2] * inv255;
+	// pixel_color.a = render_target[4 * (x + y * target_w) + 3] * inv255;
 
-	pixel_color = ref->alpha_blending_helper(pixel_color, color);
+	// pixel_color = ref->alpha_blending_helper(pixel_color, color);
 
-	render_target[4 * (x + y * target_w)] = (uint8_t)(pixel_color.r * 255);
-	render_target[4 * (x + y * target_w) + 1] = (uint8_t)(pixel_color.g * 255);
-	render_target[4 * (x + y * target_w) + 2] = (uint8_t)(pixel_color.b * 255);
-	render_target[4 * (x + y * target_w) + 3] = (uint8_t)(pixel_color.a * 255);
+	// render_target[4 * (x + y * target_w)] = (uint8_t)(pixel_color.r * 255);
+	// render_target[4 * (x + y * target_w) + 1] = (uint8_t)(pixel_color.g * 255);
+	// render_target[4 * (x + y * target_w) + 2] = (uint8_t)(pixel_color.b * 255);
+	// render_target[4 * (x + y * target_w) + 3] = (uint8_t)(pixel_color.a * 255);
 
+
+
+  render_target[4 * (x + y * target_w)] = (uint8_t)(color.r * 255);
+	render_target[4 * (x + y * target_w) + 1] = (uint8_t)(color.g * 255);
+	render_target[4 * (x + y * target_w) + 2] = (uint8_t)(color.b * 255);
+	render_target[4 * (x + y * target_w) + 3] = (uint8_t)(color.a * 255);
+
+
+  for(int i=0; i<sample_rate; i++){
+    for(int j=0; j<sample_rate; j++){
+      fill_sample(x*sample_rate+i,y*sample_rate+j,color);
+    }
+  }
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
@@ -75,10 +99,37 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   rasterize_line(a.x, a.y, b.x, b.y, Color::Black);
   rasterize_line(a.x, a.y, c.x, c.y, Color::Black);
   rasterize_line(d.x, d.y, b.x, b.y, Color::Black);
-  rasterize_line(d.x, d.y, c.x, c.y, Color::Black);
+  rasterize_line(d.x, d.y, c.x, c.y, Color::Black);  
 
   // resolve and send to render target
   resolve();
+
+
+  unsigned char maxColor_r=0, maxColor_g=0, maxColor_b=0, maxColor_a=0, minColor_r=0, minColor_g=0, minColor_b=0, minColor_a=0;
+  for(int x=0; x<this->target_w; x++){
+    for(int y=0; y<this->target_h; y++){
+
+      maxColor_r = max(maxColor_r, render_target[4 * (x + y * target_w)]);
+      maxColor_g = max(maxColor_g, render_target[4 * (x + y * target_w) + 1]);
+      maxColor_b = max(maxColor_b, render_target[4 * (x + y * target_w) + 2]);
+      maxColor_a = max(maxColor_a, render_target[4 * (x + y * target_w) + 3]);
+
+      minColor_r = min(minColor_r, render_target[4 * (x + y * target_w)]);
+      minColor_g = min(minColor_g, render_target[4 * (x + y * target_w) + 1]);
+      minColor_b = min(minColor_b, render_target[4 * (x + y * target_w) + 2]);
+      minColor_a = min(minColor_a, render_target[4 * (x + y * target_w) + 3]);
+    }
+  }
+  cout<<"\n";
+  cout << "maxColor_r " << (int)maxColor_r << endl;
+  cout << "maxColor_g " << (int)maxColor_g << endl;
+  cout << "maxColor_b " << (int)maxColor_b << endl;
+  cout << "maxColor_a " << (int)maxColor_a << endl;
+
+  cout << "minColor_r " << (int)minColor_r << endl;
+  cout << "minColor_g " << (int)minColor_g << endl;
+  cout << "minColor_b " << (int)minColor_b << endl;
+  cout << "minColor_a " << (int)minColor_a << endl;
 
 }
 
@@ -86,9 +137,13 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
 
   // Task 2: 
   // You may want to modify this for supersampling support
+  cout<<"Setting sample rate to "<<sample_rate << endl;
   this->sample_rate = sample_rate;
-  supersample_target.resize(4*this->target_h*sample_rate*this->target_w*sample_rate);
+  // supersample_target.resize(4*this->target_h*sample_rate*this->target_w*sample_rate);
+  supersample_target.resize(4*this->target_h*4*this->target_w*4);
   std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  cout<<"size of supersample_target (" << this->target_h*sample_rate<<", "<<this->target_w*sample_rate<<" ) =>"<<
+  supersample_target.size()<<endl;
   // printf("Inside set_sample_rate");
 }
 
@@ -97,6 +152,7 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
 
   // Task 2: 
   // You may want to modify this for supersampling support
+  cout << "Calling set_render_target"<< endl;
   this->render_target = render_target;
   this->target_w = width;
   this->target_h = height;
@@ -282,11 +338,17 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 
   // fill sample - NOT doing alpha blending!
   // TODO: Call fill_pixel here to run alpha blending
-  render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
-  render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
-  render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
-  render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
+  // render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
+  // render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
+  // render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
+  // render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
 
+  // for(int i=0; i<sample_rate; i++){
+  //   for(int j=0; j<sample_rate; j++){
+  //     fill_sample(x*sample_rate+i,y*sample_rate+j,color);
+  //   }
+  // }
+  fill_pixel(x, y, color);
 }
 void SoftwareRendererImp::line_helper_1(bool flipped,
                   float x0, float y0,
@@ -315,8 +377,8 @@ void SoftwareRendererImp::line_helper_2(bool flipped,
   y   = y0,
   eps = 0;
   for ( int x = x0; x <= x1; x++ )  {
-    if (flipped) rasterize_point(x,y,color);
-    else rasterize_point(y,x,color);
+    if (flipped) rasterize_point(y,x,color);
+    else rasterize_point(x,y,color);
     eps += dy;
     if ( (eps << 1) <= -dx )  {
       y--;  eps += dx;
@@ -331,11 +393,13 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
   ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
-  
+
   // float m = (y1-y0)/(x1-x0);
   // if(m>=0){
   //   if(x1<x0){//order points st. pt0 is to the left of pt1
-  //     swap(x0,x1); swap(y0,y1);
+  //     // swap(x0,x1); swap(y0,y1);
+  //     if(m<1) line_helper_1(false, x1,y1,x0,y0,color); //increment x
+  //     else line_helper_1(true, y1,x1,y0,x0,color); //increment y  
   //   }
   //   if(m<1) line_helper_1(false, x0,y0,x1,y1,color); //increment x
   //   else line_helper_1(true, y0,x0,y1,x1,color); //increment y
@@ -344,13 +408,15 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   //   if(m>-1){
   //     if(x1<x0){//order points st. pt0 is to the left of pt1
-  //       swap(x0,x1); swap(y0,y1);
+  //       // swap(x0,x1); swap(y0,y1);
+  //       line_helper_2(false, x1,y1,x0,y0,color); //increment x
   //     }
   //     line_helper_2(false, x0,y0,x1,y1,color); //increment x
   //   }
   //   else {
   //     if(y1<y0){//order points st. pt0 is below pt1
-  //       swap(x0,x1); swap(y0,y1);
+  //       // swap(x0,x1); swap(y0,y1);
+  //       line_helper_2(true, y1,x1,y0,x0,color); //increment y
   //     }
   //     line_helper_2(true, y0,x0,y1,x1,color); //increment y
 
@@ -382,6 +448,7 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               float x1, float y1,
                                               float x2, float y2,
                                               Color color ) {
+  // return;
   // Task 1: 
   // Implement triangle rasterization
   float A[3], B[3], C[3];
@@ -436,27 +503,54 @@ void SoftwareRendererImp::resolve( void ) {
   // Task 2: 
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 2".
+  Color maxColor, minColor;
   for(int x=0; x<this->target_w; x++){
     for(int y=0; y<this->target_h; y++){
-      Color avg_color;
+      // cout << "Calling resolve"<< endl;
+      Color avg_color(0.0,0.0, 0.0, 0.0);
       for(int i=0; i<sample_rate; i++){
         for(int j=0; j< sample_rate; j++){
-          float sx = x*this->sample_rate+i,  sy = y*this->sample_rate+j;
-          avg_color.r += supersample_target[4*(sx+sy*target_w*sample_rate)];
-          avg_color.g += supersample_target[4*(sx+sy*target_w*sample_rate)+1]; 
-          avg_color.b += supersample_target[4*(sx+sy*target_w*sample_rate)+2];
-          avg_color.a += supersample_target[4*(sx+sy*target_w*sample_rate)+3];  
+          int sx = x*this->sample_rate+i,  sy = y*this->sample_rate+j;
+          avg_color.r += supersample_target[4*(sx+sy*target_w*sample_rate)]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3];
+          avg_color.g += supersample_target[4*(sx+sy*target_w*sample_rate)+1]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3]; 
+          avg_color.b += supersample_target[4*(sx+sy*target_w*sample_rate)+2]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3];
+          avg_color.a += supersample_target[4*(sx+sy*target_w*sample_rate)+3]/255.0;  
         }
       }
-      avg_color *= 1/(sample_rate*sample_rate);
-      render_target[4 * (x + y * target_w)] = avg_color.r;
-      render_target[4 * (x + y * target_w) + 1] = avg_color.g;
-	    render_target[4 * (x + y * target_w) + 2] = avg_color.b;
-	    render_target[4 * (x + y * target_w) + 3] = 255;
+      avg_color.r /= sample_rate*sample_rate;
+      avg_color.g /= sample_rate*sample_rate;
+      avg_color.b /= sample_rate*sample_rate;
+      avg_color.a /= sample_rate*sample_rate;
 
-      // fill_pixel(x,y,avg_color);
+      maxColor.r = max(maxColor.r, avg_color.r);
+      maxColor.g = max(maxColor.g, avg_color.g);
+      maxColor.b = max(maxColor.b, avg_color.b);
+      maxColor.a = max(maxColor.a, avg_color.a);
+
+      minColor.r = min(minColor.r, avg_color.r);
+      minColor.g = min(minColor.g, avg_color.g);
+      minColor.b = min(minColor.b, avg_color.b);
+      minColor.a = min(minColor.a, avg_color.a);
+
+      // render_target[4 * (x + y * target_w)] = (uint8_t)(avg_color.r * 255);
+      // render_target[4 * (x + y * target_w) + 1] = (uint8_t)(avg_color.g * 255);
+	    // render_target[4 * (x + y * target_w) + 2] = (uint8_t)(avg_color.b * 255);
+	    // render_target[4 * (x + y * target_w) + 3] = (uint8_t)(avg_color.a * 255);
+
+      fill_pixel(x,y,avg_color);
     }
   }
+  cout<<"\n";
+  cout << "maxColor.r " << maxColor.r << endl;
+  cout << "maxColor.g " << maxColor.g << endl;
+  cout << "maxColor.b " << maxColor.b << endl;
+  cout << "maxColor.a " << maxColor.a << endl;
+
+  cout << "minColor.r " << minColor.r << endl;
+  cout << "minColor.g " << minColor.g << endl;
+  cout << "minColor.b " << minColor.b << endl;
+  cout << "minColor.a " << minColor.a << endl;
+  
   // supersample_target.clear(); //free buffer of supersamples
   return;
 
