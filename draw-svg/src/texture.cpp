@@ -69,11 +69,48 @@ void Sampler2DImp::generate_mips(Texture& tex, int startLevel) {
   Color colors[3] = { Color(1,0,0,1), Color(0,1,0,1), Color(0,0,1,1) };
   for(size_t i = 1; i < tex.mipmap.size(); ++i) {
 
+    /* Advanced Task: Implement MipMap
     Color c = colors[i % 3];
     MipLevel& mip = tex.mipmap[i];
 
     for(size_t i = 0; i < 4 * mip.width * mip.height; i += 4) {
       float_to_uint8( &mip.texels[i], &c.r );
+    }
+    */
+
+    MipLevel& mip = tex.mipmap[i];
+    MipLevel& mipPrev = tex.mipmap[i-1];
+    for(size_t i = 0; i < mip.width; i += 1) {
+      for(size_t j=0; j< mip.height; j++){
+        Color c;
+        Color c1, c2, c3, c4;
+        c1.r = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)]/255.0;
+        c1.g = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+1]/255.0;
+        c1.b = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+2]/255.0;
+        c1.a = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+3]/255.0;
+
+        c2.r = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)]/255.0;
+        c2.g = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+1]/255.0;
+        c2.b = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+2]/255.0;
+        c2.a = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+3]/255.0;
+
+        c3.r = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)]/255.0;
+        c3.g = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+1]/255.0;
+        c3.b = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+2]/255.0;
+        c3.a = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+3]/255.0;
+
+        c4.r = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)]/255.0;
+        c4.g = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+1]/255.0;
+        c4.b = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+2]/255.0;
+        c4.a = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+3]/255.0;
+
+        c.r = 0.25*c1.r + 0.25*c2.r + 0.25*c3.r + 0.25*c4.r;
+        c.g = 0.25*c1.g + 0.25*c2.g + 0.25*c3.g + 0.25*c4.g;
+        c.b = 0.25*c1.b + 0.25*c2.b + 0.25*c3.b + 0.25*c4.b;
+        c.a = 0.25*c1.a + 0.25*c2.a + 0.25*c3.a + 0.25*c4.a;
+
+        float_to_uint8( &mip.texels[4*(i + j*mip.width)], &c.r);
+      }
     }
   }
 
@@ -175,7 +212,16 @@ Color Sampler2DImp::sample_trilinear(Texture& tex,
 
   // return magenta for invalid level
   return Color(1,0,1,1);
+  int mip_u_lvl = (int) log2f(u_scale);
+  int mip_v_lvl = (int) log2f(v_scale);
 
+  Color u_low = sample_bilinear(tex,u,v,mip_u_lvl);
+  Color u_high = sample_bilinear(tex,u,v,mip_u_lvl+1);
+  Color v_low = sample_bilinear(tex,u,v,mip_v_lvl);
+  Color v_high = sample_bilinear(tex,u,v,mip_v_lvl+1);
+
+  float s = u_scale/(1<<mip_u_lvl) -1 , t = v_scale/(1<<mip_v_lvl) - 1;
+  return lerp(t, lerp(s, col_lt, col_rt), lerp(s, col_lb, col_rb));
 }
 
 } // namespace CS248
