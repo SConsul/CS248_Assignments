@@ -106,33 +106,6 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   // resolve and send to render target
   resolve();
 
-
-  unsigned char maxColor_r=0, maxColor_g=0, maxColor_b=0, maxColor_a=0, minColor_r=0, minColor_g=0, minColor_b=0, minColor_a=0;
-  for(int x=0; x<this->target_w; x++){
-    for(int y=0; y<this->target_h; y++){
-
-      maxColor_r = max(maxColor_r, render_target[4 * (x + y * target_w)]);
-      maxColor_g = max(maxColor_g, render_target[4 * (x + y * target_w) + 1]);
-      maxColor_b = max(maxColor_b, render_target[4 * (x + y * target_w) + 2]);
-      maxColor_a = max(maxColor_a, render_target[4 * (x + y * target_w) + 3]);
-
-      minColor_r = min(minColor_r, render_target[4 * (x + y * target_w)]);
-      minColor_g = min(minColor_g, render_target[4 * (x + y * target_w) + 1]);
-      minColor_b = min(minColor_b, render_target[4 * (x + y * target_w) + 2]);
-      minColor_a = min(minColor_a, render_target[4 * (x + y * target_w) + 3]);
-    }
-  }
-  cout<<"\n end of draw svg\n";
-  cout << "maxColor_r " << (int)maxColor_r << endl;
-  cout << "maxColor_g " << (int)maxColor_g << endl;
-  cout << "maxColor_b " << (int)maxColor_b << endl;
-  cout << "maxColor_a " << (int)maxColor_a << endl;
-
-  cout << "minColor_r " << (int)minColor_r << endl;
-  cout << "minColor_g " << (int)minColor_g << endl;
-  cout << "minColor_b " << (int)minColor_b << endl;
-  cout << "minColor_a " << (int)minColor_a << endl;
-
 }
 
 void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
@@ -574,7 +547,21 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
-
+  float eps = 1e-6;
+  for(int x=floor(x0); x<=ceil(x1);x++){
+    for(int y=floor(y0); y<=ceil(y1); y++){
+      for(int i=0; i<this->sample_rate; i++){
+        for(int j=0; j<this->sample_rate; j++){
+          float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
+          float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          // Color col = sampler->sample_nearest(tex,u,v,0);
+          Color col = sampler->sample_bilinear(tex,u,v,0);
+          fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+        }
+      }
+    }
+  }
+  // 
 }
 
 // resolve samples to render target
@@ -601,16 +588,6 @@ void SoftwareRendererImp::resolve( void ) {
       avg_color.b /= sample_rate*sample_rate;
       avg_color.a /= sample_rate*sample_rate;
 
-      maxColor.r = max(maxColor.r, avg_color.r);
-      maxColor.g = max(maxColor.g, avg_color.g);
-      maxColor.b = max(maxColor.b, avg_color.b);
-      maxColor.a = max(maxColor.a, avg_color.a);
-
-      minColor.r = min(minColor.r, avg_color.r);
-      minColor.g = min(minColor.g, avg_color.g);
-      minColor.b = min(minColor.b, avg_color.b);
-      minColor.a = min(minColor.a, avg_color.a);
-
       // render_target[4 * (x + y * target_w)] = (uint8_t)(avg_color.r * 255);
       // render_target[4 * (x + y * target_w) + 1] = (uint8_t)(avg_color.g * 255);
 	    // render_target[4 * (x + y * target_w) + 2] = (uint8_t)(avg_color.b * 255);
@@ -619,16 +596,6 @@ void SoftwareRendererImp::resolve( void ) {
       fill_pixel(x,y,avg_color);
     }
   }
-  cout<<"\ninside resolve\n";
-  cout << "maxColor.r " << maxColor.r << endl;
-  cout << "maxColor.g " << maxColor.g << endl;
-  cout << "maxColor.b " << maxColor.b << endl;
-  cout << "maxColor.a " << maxColor.a << endl;
-
-  cout << "minColor.r " << minColor.r << endl;
-  cout << "minColor.g " << minColor.g << endl;
-  cout << "minColor.b " << minColor.b << endl;
-  cout << "minColor.a " << minColor.a << endl;
   
   // supersample_target.clear(); //free buffer of supersamples
   return;
