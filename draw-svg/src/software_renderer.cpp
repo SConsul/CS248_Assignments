@@ -496,7 +496,20 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
-
+  float eps = 1e-6;
+  for(int x=floor(x0); x<=ceil(x1);x++){
+    for(int y=floor(y0); y<=ceil(y1); y++){
+      for(int i=0; i<this->sample_rate; i++){
+        for(int j=0; j<this->sample_rate; j++){
+          float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
+          float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          Color col = sampler->sample_nearest(tex,u,v,0);
+          fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+        }
+      }
+    }
+  }
+  // 
 }
 
 // resolve samples to render target
