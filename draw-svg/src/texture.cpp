@@ -92,10 +92,10 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
   MipLevel ml = tex.mipmap[level];
   assert(ml.height == tex.height && ml.width == tex.width);
   Color col;
-  col.r = ml.texels[4*(u_coord+v_coord*tex.height)]/255.0;
-  col.g = ml.texels[4*(u_coord+v_coord*tex.height)+1]/255.0;
-  col.b = ml.texels[4*(u_coord+v_coord*tex.height)+2]/255.0;
-  col.a = ml.texels[4*(u_coord+v_coord*tex.height)+3]/255.0;
+  col.r = ml.texels[4*(u_coord+v_coord*tex.width)]/255.0;
+  col.g = ml.texels[4*(u_coord+v_coord*tex.width)+1]/255.0;
+  col.b = ml.texels[4*(u_coord+v_coord*tex.width)+2]/255.0;
+  col.a = ml.texels[4*(u_coord+v_coord*tex.width)+3]/255.0;
   return col;
 }
 
@@ -141,25 +141,25 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   assert(ml.height == tex.height && ml.width == tex.width);
 
   Color col_lt, col_lb, col_rt, col_rb;
-  col_lt.r = ml.texels[4*(ul+vt*tex.height)]/255.0;
-  col_lt.g = ml.texels[4*(ul+vt*tex.height)+1]/255.0;
-  col_lt.b = ml.texels[4*(ul+vt*tex.height)+2]/255.0;
-  col_lt.a = ml.texels[4*(ul+vt*tex.height)+3]/255.0;
+  col_lt.r = ml.texels[4*(ul+vt*tex.width)]/255.0;
+  col_lt.g = ml.texels[4*(ul+vt*tex.width)+1]/255.0;
+  col_lt.b = ml.texels[4*(ul+vt*tex.width)+2]/255.0;
+  col_lt.a = ml.texels[4*(ul+vt*tex.width)+3]/255.0;
 
-  col_lb.r = ml.texels[4*(ul+vb*tex.height)]/255.0;
-  col_lb.g = ml.texels[4*(ul+vb*tex.height)+1]/255.0;
-  col_lb.b = ml.texels[4*(ul+vb*tex.height)+2]/255.0;
-  col_lb.a = ml.texels[4*(ul+vb*tex.height)+3]/255.0;
+  col_lb.r = ml.texels[4*(ul+vb*tex.width)]/255.0;
+  col_lb.g = ml.texels[4*(ul+vb*tex.width)+1]/255.0;
+  col_lb.b = ml.texels[4*(ul+vb*tex.width)+2]/255.0;
+  col_lb.a = ml.texels[4*(ul+vb*tex.width)+3]/255.0;
 
-  col_rt.r = ml.texels[4*(ur+vt*tex.height)]/255.0;
-  col_rt.g = ml.texels[4*(ur+vt*tex.height)+1]/255.0;
-  col_rt.b = ml.texels[4*(ur+vt*tex.height)+2]/255.0;
-  col_rt.a = ml.texels[4*(ur+vt*tex.height)+3]/255.0;
+  col_rt.r = ml.texels[4*(ur+vt*tex.width)]/255.0;
+  col_rt.g = ml.texels[4*(ur+vt*tex.width)+1]/255.0;
+  col_rt.b = ml.texels[4*(ur+vt*tex.width)+2]/255.0;
+  col_rt.a = ml.texels[4*(ur+vt*tex.width)+3]/255.0;
 
-  col_rb.r = ml.texels[4*(ur+vb*tex.height)]/255.0;
-  col_rb.g = ml.texels[4*(ur+vb*tex.height)+1]/255.0;
-  col_rb.b = ml.texels[4*(ur+vb*tex.height)+2]/255.0;
-  col_rb.a = ml.texels[4*(ur+vb*tex.height)+3]/255.0;
+  col_rb.r = ml.texels[4*(ur+vb*tex.width)]/255.0;
+  col_rb.g = ml.texels[4*(ur+vb*tex.width)+1]/255.0;
+  col_rb.b = ml.texels[4*(ur+vb*tex.width)+2]/255.0;
+  col_rb.a = ml.texels[4*(ur+vb*tex.width)+3]/255.0;
 
   float s = (u - ul)/tex.width, t = (v - vt)/tex.height;
   return lerp(t, lerp(s, col_lt, col_rt), lerp(s, col_lb, col_rb));
