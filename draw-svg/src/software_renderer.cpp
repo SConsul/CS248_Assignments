@@ -35,7 +35,8 @@ void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
 	supersample_target[4 * (sx + sy * target_w*this->sample_rate)] = (uint8_t)(pixel_color.r * 255);
 	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 1] = (uint8_t)(pixel_color.g * 255);
 	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 2] = (uint8_t)(pixel_color.b * 255);
-	supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
+	//supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t)(pixel_color.a * 255);
+  supersample_target[4 * (sx + sy * target_w*this->sample_rate) + 3] = (uint8_t) 255;
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -66,7 +67,7 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
   render_target[4 * (x + y * target_w)] = (uint8_t)(color.r * 255);
 	render_target[4 * (x + y * target_w) + 1] = (uint8_t)(color.g * 255);
 	render_target[4 * (x + y * target_w) + 2] = (uint8_t)(color.b * 255);
-	render_target[4 * (x + y * target_w) + 3] = (uint8_t)(color.a * 255);
+	render_target[4 * (x + y * target_w) + 3] = (uint8_t) 255;//(uint8_t)(color.a * 255);
 
 
   for(int i=0; i<sample_rate; i++){
@@ -121,7 +122,7 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
       minColor_a = min(minColor_a, render_target[4 * (x + y * target_w) + 3]);
     }
   }
-  cout<<"\n";
+  cout<<"\n end of draw svg\n";
   cout << "maxColor_r " << (int)maxColor_r << endl;
   cout << "maxColor_g " << (int)maxColor_g << endl;
   cout << "maxColor_b " << (int)maxColor_b << endl;
@@ -142,7 +143,7 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
   this->sample_rate = sample_rate;
   // supersample_target.resize(4*this->target_h*sample_rate*this->target_w*sample_rate);
   supersample_target.resize(4*this->target_h*4*this->target_w*4);
-  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  std::fill(supersample_target.begin(),supersample_target.end(),(uint8_t) 255);
   cout<<"size of supersample_target (" << this->target_h*sample_rate<<", "<<this->target_w*sample_rate<<" ) =>"<<
   supersample_target.size()<<endl;
   // printf("Inside set_sample_rate");
@@ -152,6 +153,7 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
                                              size_t width, size_t height ) {
 
   // Task 2: 
+  cout<<"in set_render_target"<<endl;
   // You may want to modify this for supersampling support
   cout << "Calling set_render_target"<< endl;
   this->render_target = render_target;
@@ -159,7 +161,10 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->target_h = height;
 
   supersample_target.resize(4*height*sample_rate*width*sample_rate);
-  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  std::fill(supersample_target.begin(),supersample_target.end(),(uint8_t) 255);
+  for(int i=0;i<4*width*height;i++){
+    render_target[i]=255;
+  }
 }
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
@@ -402,7 +407,7 @@ void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
   // reference: https://en.wikipedia.org/wiki/Xiaolin_Wu's_line_algorithm
-  
+
   bool steep = abs(y1-y0)>abs(x1-x0);
   if(steep){
     swap(x0,y0); swap(x1,y1);
@@ -614,7 +619,7 @@ void SoftwareRendererImp::resolve( void ) {
       fill_pixel(x,y,avg_color);
     }
   }
-  cout<<"\n";
+  cout<<"\ninside resolve\n";
   cout << "maxColor.r " << maxColor.r << endl;
   cout << "maxColor.g " << maxColor.g << endl;
   cout << "maxColor.b " << maxColor.b << endl;
