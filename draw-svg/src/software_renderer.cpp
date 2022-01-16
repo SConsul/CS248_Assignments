@@ -520,6 +520,7 @@ void SoftwareRendererImp::resolve( void ) {
   }
   
   // supersample_target.clear(); //free buffer of supersamples
+  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
   return;
 
 }
