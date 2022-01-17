@@ -13,6 +13,8 @@ using namespace std;
 namespace CS248 {
 vector<unsigned char> supersample_target; 
 
+float cosine = 0, sine = 0;
+
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
@@ -308,6 +310,9 @@ void SoftwareRendererImp::draw_image( Image& image ) {
   Vector2D p0 = transform(image.position);
   Vector2D p1 = transform(image.position + image.dimension);
 
+  cosine = image.transform(0,0);
+  sine = image.transform(0,1);
+
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
 }
 
@@ -602,6 +607,14 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
+  double data[9] = {1, 0, -0.5, 0, 1, -0.5, 0, 0, 1};
+  Matrix3x3 m1(data);
+  data[2] = 0.5; data[5] = 0.5;
+  Matrix3x3 m3(data);
+  double data2[9] = {cosine, sine, 0, -1*sine, cosine, 0, 0, 0, 1};
+  Matrix3x3 m2(data2);
+  Matrix3x3 t = m1*m2*m3;
+
   float eps = 1e-6;
   for(int x=floor(x0); x<=ceil(x1);x++){
     for(int y=floor(y0); y<=ceil(y1); y++){
@@ -609,6 +622,13 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
         for(int j=0; j<this->sample_rate; j++){
           float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
           float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          cout<<"x0="<<x0<<" x1="<<x1<<" cx="<<cx<<endl;
+          cout << "Initial uv: " << u << " "<< v << endl;
+          Vector3D uvVec(u, v, 1);
+          Vector3D rotatedUV = t*uvVec;
+          u = rotatedUV[0] / rotatedUV[2];
+          v = rotatedUV[1] / rotatedUV[2];
+          cout << "Rotated uv: " << u << " " << v << endl;
           // Color col = sampler->sample_nearest(tex,u,v,0);
           Color col = sampler->sample_bilinear(tex,u,v,0);
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
@@ -616,6 +636,8 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
       }
     }
   }
+  cout << cosine << " " << sine << endl;
+  cout<<sample_rate<<endl;
   // 
 }
 
