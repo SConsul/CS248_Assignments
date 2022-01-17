@@ -279,6 +279,25 @@ void SoftwareRendererImp::draw_ellipse( Ellipse& ellipse ) {
   // Advanced Task
   // Implement ellipse rasterization
 
+  Vector2D c = transform(ellipse.center);
+  Vector2D r =  transform(ellipse.center + ellipse.radius);
+  double cx = c.x;
+  double cy = c.y;
+  double rx = r.x - cx;
+  double ry = r.y - cy;
+  double pi = 3.1415926535;
+
+  int numSegments = 60;
+  double x_prev = cx+rx, y_prev=cy, x_new=0, y_new=0;
+  for(int n=0; n<=numSegments; n++){
+    double theta = 2*pi*n/numSegments;
+    x_new = cx + rx*cos(theta);
+    y_new = cy + ry*sin(theta);
+    rasterize_triangle(cx, cy, x_prev, y_prev, x_new, y_new, ellipse.style.fillColor);
+
+    x_prev = x_new; y_prev = y_new;
+  }
+
 }
 
 void SoftwareRendererImp::draw_image( Image& image ) {
