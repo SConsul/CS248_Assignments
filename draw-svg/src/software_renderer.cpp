@@ -457,8 +457,9 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
-  // ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
 
+  // Student Solution
   // float m = (y1-y0)/(x1-x0);
   // if(m>=0){
   //   if(x1<x0){//order points st. pt0 is to the left of pt1
@@ -487,22 +488,43 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   //   }
   // }
+
+
   // Advanced Task
   // Drawing Smooth Lines with Line Width
-  xiaolin_wu_line(x0, y0, x1, y1, color, 3);
+  // xiaolin_wu_line(x0, y0, x1, y1, color, 3);
+}
+
+bool isTopLeft(bool windDir, float A, float B){
+  if(windDir){
+    return (A > 0 || (A==0 && B > 0));
+  }
+  else{
+    return (A < 0 || (A==0 && B < 0));
+  }
+  return false;
 }
 
 bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y){
   if(windDir){
     for(int i=0; i<3; i++){
-      if((A[i]*x - B[i]*y + C[i]) < 0){
+      bool x = isTopLeft(true, 1.0, 1.0);
+      float value = A[i]*x - B[i]*y + C[i];
+      if(value < 0){  // All values should be > 0
+        return false;
+      }
+      else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
     }
   }
   else{
     for(int i=0; i<3; i++){
-      if((A[i]*x - B[i]*y + C[i]) > 0){
+      float value = A[i]*x - B[i]*y + C[i];
+      if(value > 0){ // All values should be < 0
+        return false;
+      }
+      else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
     }
