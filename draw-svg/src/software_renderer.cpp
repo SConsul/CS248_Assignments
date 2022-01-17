@@ -106,6 +106,10 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   // resolve and send to render target
   resolve();
 
+  /* At the end of rendering, we wish to free the memory used by supersample_target. 
+  As this is a vector, a destructor will automatically be called at the end of execution */
+  // supersample_target.clear(); //free buffer of supersamples
+
 }
 
 void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
@@ -652,7 +656,6 @@ void SoftwareRendererImp::resolve( void ) {
     }
   }
   
-  // supersample_target.clear(); //free buffer of supersamples
   std::fill(supersample_target.begin(),supersample_target.end(),255.0);
   return;
 
