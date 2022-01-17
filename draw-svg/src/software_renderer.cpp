@@ -607,28 +607,49 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
-  double data[9] = {1, 0, -0.5, 0, 1, -0.5, 0, 0, 1};
+  cosine = 0.707; sine=0.707; 
+  double rotx = 128, roty= -54;
+
+  double data[9] = {1, 0, rotx-tex.width/2, 0, 1, roty-tex.height/2, 0, 0, 1};
   Matrix3x3 m1(data);
-  data[2] = 0.5; data[5] = 0.5;
-  Matrix3x3 m3(data);
   double data2[9] = {cosine, sine, 0, -1*sine, cosine, 0, 0, 0, 1};
   Matrix3x3 m2(data2);
-  Matrix3x3 t = m1*m2*m3;
+
+  double data3[9] = {1, 0, tex.width/2, 0, 1, tex.height/2, 0, 0, 1};
+  Matrix3x3 m3(data3);
+  Matrix3x3 m4 = m1*m2*m3;
+
+  // double data3[9] = {0.707, -0.707, 128, 0.707, 0.707, -54, 0, 0, 1};
+  // Matrix3x3 m4(data3);
+
+  Vector3D xy0Vec(x0, y0, 1);
+  Vector3D xy0new = m4*xy0Vec;
+  float x0new = xy0new[0]/xy0new[2];
+  float y0new = xy0new[1]/xy0new[2];
+
+  Vector3D xy1Vec(x1, y1, 1);
+  Vector3D xy1new = m4*xy1Vec;
+  float x1new = xy1new[0]/xy1new[2];
+  float y1new = xy1new[1]/xy1new[2];
 
   float eps = 1e-6;
   for(int x=floor(x0); x<=ceil(x1);x++){
     for(int y=floor(y0); y<=ceil(y1); y++){
       for(int i=0; i<this->sample_rate; i++){
         for(int j=0; j<this->sample_rate; j++){
-          float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
-          float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          Vector3D xyVec(x, y, 1);
+          Vector3D xynew = m4*xyVec;
+          float xnew = xynew[0]/xynew[2];
+          float ynew = xynew[1]/xynew[2];
+          float cx = xnew+(0.5/sample_rate)+i/sample_rate, cy = ynew+(0.5/sample_rate)+j/sample_rate;
+          float u = (cx-x0new)/(x1new-x0new+eps), v = (cy-y0new)/(y1new-y0new+eps);
           cout<<"x0="<<x0<<" x1="<<x1<<" cx="<<cx<<endl;
-          cout << "Initial uv: " << u << " "<< v << endl;
-          Vector3D uvVec(u, v, 1);
-          Vector3D rotatedUV = t*uvVec;
-          u = rotatedUV[0] / rotatedUV[2];
-          v = rotatedUV[1] / rotatedUV[2];
-          cout << "Rotated uv: " << u << " " << v << endl;
+          // cout << "Initial uv: " << u << " "<< v << endl;
+          // Vector3D uvVec(u, v, 1);
+          // Vector3D rotatedUV = m4.inv()*uvVec;
+          // u = rotatedUV[0] / rotatedUV[2];
+          // v = rotatedUV[1] / rotatedUV[2];
+          // cout << "Rotated uv: " << u << " " << v << endl;
           // Color col = sampler->sample_nearest(tex,u,v,0);
           Color col = sampler->sample_bilinear(tex,u,v,0);
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
