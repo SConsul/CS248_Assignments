@@ -145,7 +145,8 @@ private:
                   Color color);
 	void xiaolin_wu_line( float x0, float y0,
 						float x1, float y1,
-						Color color);
+						Color color,
+						int lineWidth = 1);
 	// rasterize a line
 	void rasterize_line(float x0, float y0,
 		float x1, float y1,

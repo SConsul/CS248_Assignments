@@ -378,7 +378,8 @@ float rfpart(float x){
 
 void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
                                           float x1, float y1,
-                                          Color color) {
+                                          Color color,
+                                          int lineWidth) {
   // reference: https://en.wikipedia.org/wiki/Xiaolin_Wu's_line_algorithm
 
   bool steep = abs(y1-y0)>abs(x1-x0);
@@ -424,19 +425,32 @@ void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
   if(steep){
     for(int x=xpxl1+1; x<=xpxl2-1;x++){
       rasterize_point(floor(intery)  , x, rfpart(intery)*color);
-      rasterize_point(floor(intery)+1, x,  fpart(intery)*color);
+      int pixel_num = 1;
+      while(pixel_num < lineWidth-1){
+        rasterize_point(floor(intery)+pixel_num, x,  color); 
+        pixel_num++;
+      }
+      rasterize_point(floor(intery)+pixel_num, x,  fpart(intery)*color); 
       intery += grad;
     }
   }
   else{
     for(int x=xpxl1+1; x<=xpxl2-1;x++){
       rasterize_point(x, floor(intery),  rfpart(intery)*color);
-      rasterize_point(x, floor(intery)+1, fpart(intery)*color);
+      int pixel_num = 1;
+      while( pixel_num < lineWidth-1){
+        rasterize_point(x, floor(intery)+pixel_num, color);
+        pixel_num++;
+      }
+      rasterize_point(x, floor(intery)+pixel_num, fpart(intery)*color);
       intery += grad;
     }
   }
-return;
+
+  return;
 }
+
+
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
@@ -475,7 +489,7 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
   // }
   // Advanced Task
   // Drawing Smooth Lines with Line Width
-  xiaolin_wu_line(x0, y0, x1, y1, color);
+  xiaolin_wu_line(x0, y0, x1, y1, color, 3);
 }
 
 bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y){
