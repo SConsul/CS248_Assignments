@@ -221,7 +221,7 @@ Color Sampler2DImp::sample_trilinear(Texture& tex,
   Color v_high = sample_bilinear(tex,u,v,mip_v_lvl+1);
 
   float s = u_scale/(1<<mip_u_lvl) -1 , t = v_scale/(1<<mip_v_lvl) - 1;
-  return lerp(t, lerp(s, col_lt, col_rt), lerp(s, col_lb, col_rb));
+  return lerp(0.5, lerp(s, u_low, u_high), lerp(t, v_low, v_high));
 }
 
 } // namespace CS248
