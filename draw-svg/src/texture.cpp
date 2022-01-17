@@ -100,68 +100,74 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
 }
 
 Color lerp(float x, Color col1, Color col2){
-  Color col;
-  col.r = (1-x)*col1.r + x*col2.r;
-  col.g = (1-x)*col1.g + x*col2.g;
-  col.b = (1-x)*col1.b + x*col2.b;
-  col.a = (1-x)*col1.a + x*col2.a; 
+  Color col = (1-x)*col1 + x*col2;
+  // col.r = (1-x)*col1.r + x*col2.r;
+  // col.g = (1-x)*col1.g + x*col2.g;
+  // col.b = (1-x)*col1.b + x*col2.b;
+  // col.a = (1-x)*col1.a + x*col2.a; 
   return col;
 }
 
 Color Sampler2DImp::sample_bilinear(Texture& tex, 
                                     float u, float v, 
                                     int level) {
+                                      
   
   // Task 4: Implement bilinear filtering
   if(level<0 || level>=tex.mipmap.size()){
     return Color(1,0,1,1);   
   }
   
+  MipLevel ml = tex.mipmap[level];
 
+  if (u < 0.0) {
+    u = 0.0;
+  }
+  if (v < 0.0) {
+    v = 0.0;
+  }
+  if (u > 1.0) {
+    u = 1.0;
+  }
+  if (v > 1.0) {
+    v = 1.0;
+  }
   u*=tex.width;
   v*=tex.height;
 
-  if (u < 0) {
-    u = 0;
-  }
-  if (v < 0) {
-    v = 0;
-  }
-  if (u > tex.width - 1) {
-    u = tex.width - 1;
-  }
-  if (v > tex.height - 1) {
-    v = tex.height - 1;
-  }
+  int ul = (u - int(u) >= 0.5)? int(int(u)+0.5) : int(int(u)-0.5), ur = min(ul+1, int(tex.width-1));
+  int vt = (v - int(v) >= 0.5)? int(int(v)+0.5) : int(int(v)-0.5), vb = min(vt+1, int(tex.height-1));
 
-  int ul = (u - int(u) >= 0.5)? int(u)+0.5 : int(u)-0.5, ur = ul+1;
-  int vt = (v - int(v) >= 0.5)? int(v)+0.5 : int(v)-0.5, vb = vt+1;
-
-  MipLevel ml = tex.mipmap[level];
+  
   assert(ml.height == tex.height && ml.width == tex.width);
 
   Color col_lt, col_lb, col_rt, col_rb;
-  col_lt.r = ml.texels[4*(ul+vt*tex.width)]/255.0;
-  col_lt.g = ml.texels[4*(ul+vt*tex.width)+1]/255.0;
-  col_lt.b = ml.texels[4*(ul+vt*tex.width)+2]/255.0;
-  col_lt.a = ml.texels[4*(ul+vt*tex.width)+3]/255.0;
+  int idx = 4*(ul+vt*tex.width);
+  col_lt.r = ml.texels[idx]/255.0;
+  col_lt.g = ml.texels[idx+1]/255.0;
+  col_lt.b = ml.texels[idx+2]/255.0;
+  col_lt.a = ml.texels[idx+3]/255.0;
 
-  col_lb.r = ml.texels[4*(ul+vb*tex.width)]/255.0;
-  col_lb.g = ml.texels[4*(ul+vb*tex.width)+1]/255.0;
-  col_lb.b = ml.texels[4*(ul+vb*tex.width)+2]/255.0;
-  col_lb.a = ml.texels[4*(ul+vb*tex.width)+3]/255.0;
+  idx = 4*(ul+vb*tex.width);
+  col_lb.r = ml.texels[idx]/255.0;
+  col_lb.g = ml.texels[idx+1]/255.0;
+  col_lb.b = ml.texels[idx+2]/255.0;
+  col_lb.a = ml.texels[idx+3]/255.0;
 
-  col_rt.r = ml.texels[4*(ur+vt*tex.width)]/255.0;
-  col_rt.g = ml.texels[4*(ur+vt*tex.width)+1]/255.0;
-  col_rt.b = ml.texels[4*(ur+vt*tex.width)+2]/255.0;
-  col_rt.a = ml.texels[4*(ur+vt*tex.width)+3]/255.0;
+  idx = 4*(ur+vt*tex.width);
+  col_rt.r = ml.texels[idx]/255.0;
+  col_rt.g = ml.texels[idx+1]/255.0;
+  col_rt.b = ml.texels[idx+2]/255.0;
+  col_rt.a = ml.texels[idx+3]/255.0;
 
-  col_rb.r = ml.texels[4*(ur+vb*tex.width)]/255.0;
-  col_rb.g = ml.texels[4*(ur+vb*tex.width)+1]/255.0;
-  col_rb.b = ml.texels[4*(ur+vb*tex.width)+2]/255.0;
-  col_rb.a = ml.texels[4*(ur+vb*tex.width)+3]/255.0;
+  idx = 4*(ur+vb*tex.width);
+  col_rb.r = ml.texels[idx]/255.0;
+  col_rb.g = ml.texels[idx+1]/255.0;
+  col_rb.b = ml.texels[idx+2]/255.0;
+  col_rb.a = ml.texels[idx+3]/255.0;
 
-  float s = (u - ul)/tex.width, t = (v - vt)/tex.height;
+  // float s = (u - (ul+0.5))/tex.width, t = (v - (vt+0.5))/tex.height;
+  float s = (u - (ul+0.5)), t = (v - (vt+0.5));
   return lerp(t, lerp(s, col_lt, col_rt), lerp(s, col_lb, col_rb));
 
 }
