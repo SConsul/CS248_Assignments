@@ -135,8 +135,8 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   u*=tex.width;
   v*=tex.height;
 
-  int ul = (u - int(u) >= 0.5)? int(int(u)+0.5) : int(int(u)-0.5), ur = min(ul+1, int(tex.width-1));
-  int vt = (v - int(v) >= 0.5)? int(int(v)+0.5) : int(int(v)-0.5), vb = min(vt+1, int(tex.height-1));
+  int ul = (u - int(u) >= 0.5)? int(u) : int(u)-1, ur = min(ul+1, int(tex.width-1));
+  int vt = (v - int(v) >= 0.5)? int(v) : int(v)-1, vb = min(vt+1, int(tex.height-1));
 
   
   assert(ml.height == tex.height && ml.width == tex.width);
