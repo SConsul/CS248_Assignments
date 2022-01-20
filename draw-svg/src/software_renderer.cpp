@@ -13,9 +13,6 @@ using namespace std;
 namespace CS248 {
 vector<unsigned char> supersample_target; 
 
-float cosine = 0, sine = 0;
-Vector2D prot;
-
 float svg_width=0, svg_height=0;
 
 
@@ -308,23 +305,6 @@ void SoftwareRendererImp::draw_ellipse( Ellipse& ellipse ) {
 }
 
 void SoftwareRendererImp::draw_image( Image& image ) {
-
-  // Advanced Task
-  // Render image element with rotation
-  // cout<<image.position.x<<" "<<image.position.y<<endl;
-  // cout<<(image.position + image.dimension).x<<" "<<(image.position + image.dimension).y<<endl;
-  // Vector2D p0 = transform(image.position);
-  // Vector2D p1 = transform(image.position + image.dimension);
-  // Vector2D crot(image.transform(0,2),image.transform(1,2));
-  // prot = transform(crot);  
-  // cosine = image.transform(0,0);
-  // sine = image.transform(0,1);
-  // cout<<"p0= "<<p0.x<<" "<<p0.y<<endl;
-  // cout<<"p1= "<<p1.x<<" "<<p1.y<<endl;
-  // cout<<"crot= "<<crot.x<<" "<<crot.y<<endl;
-  // cout<<"prot= "<<prot.x<<" "<<prot.y<<endl;
-  // cout<<"sine= "<<sine<<" cosine="<<cosine<<endl;
-  cout<<transformation<<endl;
   Vector2D p0 = image.position;
   Vector2D p1 = image.position + image.dimension;
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
@@ -630,14 +610,6 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
   float frame_x1 = frame_1.x/frame_1.z;
   float frame_y1 = frame_1.y/frame_1.z;
   Matrix3x3 t_inv = transformation.inv();
-  // t_inv(0,2)=0;
-  // t_inv(1,2)=0;
-  // p0 = this->transform(p0);
-  // p1 = this->transform(p1);
-  // p2 = this->transform(p2);
-  // p3 = this->transform(p3);
-  cout<<x0<<" "<<x1<<" "<<y0<<" "<<y1<<endl;
-  cout << "Frame coordinates ("<< frame_x0 << " " << frame_y0 << ") ("<< frame_x1 << " " << frame_y1<<")"<<endl;
 
   float eps = 1e-6;
   for(int x=floor(frame_x0); x<ceil(frame_x1);x++){
@@ -656,37 +628,15 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
           if(u > 1.0 || u < 0 || v > 1 || v < 0){
             continue;
           }
-          //cout << "Hello " <<cxnew<<" "<<cynew<<endl;
+          
           Color col = sampler->sample_bilinear(tex,u,v,0);
-          // cout<<"x0="<<x0<<" x1="<<x1<<" cx="<<cx<<endl;
-          // cout << "Initial uv: " << u << " "<< v << endl;
-          // Vector3D uvVec(u, v, 1);
-          // Vector3D rotatedUV = m4.inv()*uvVec;
-          // u = rotatedUV[0] / rotatedUV[2];
-          // v = rotatedUV[1] / rotatedUV[2];
-          // cout << "Rotated uv: " << u << " " << v << endl;
-          // Color col = sampler->sample_nearest(tex,u,v,0);
-          
-          // cout<<"in raster = "<<transformation<<endl;
-          
-          // if (cxnew<x1 && cxnew>0 && cynew<y1 && cynew>0)
-          // {
-          //   // fill_sample(cxnew*sample_rate,cynew*sample_rate,col);
-          //   // fill_sample(cx*sample_rate,cy*sample_rate,col);
-          //   // fill_sample(cx,cy,col);
-          // }
-          // cout<<col<<endl;
+
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
           
         }
       }
     }
   }
-  // cout << sine << " " << cosine << endl;
-  // cout<<"sr = "<<sample_rate<<endl;
-  // cout<<rotx<<" "<<roty<<endl;
-  // cout<<tex.width<<" "<<tex.height<<endl;
-  // 
 }
 
 // resolve samples to render target
