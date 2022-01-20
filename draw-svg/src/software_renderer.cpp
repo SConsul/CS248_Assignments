@@ -305,8 +305,11 @@ void SoftwareRendererImp::draw_ellipse( Ellipse& ellipse ) {
 }
 
 void SoftwareRendererImp::draw_image( Image& image ) {
-  Vector2D p0 = image.position;
-  Vector2D p1 = image.position + image.dimension;
+  // Advanced Task
+  // Render image element with rotation
+
+  Vector2D p0 = transform(image.position);
+  Vector2D p1 = transform(image.position + image.dimension);
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
 }
 
@@ -601,6 +604,14 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
+  Matrix3x3 t_inv = transformation.inv();
+  Vector3D p0(x0, y0 , 1), p1(x1, y1, 1);
+  p0 = t_inv*p0;
+  p1 = t_inv*p1;
+  x0 = p0.x/p0.z;
+  y0 = p0.y/p0.z;
+  x1 = p1.x/p1.z;
+  y1 = p1.y/p1.z;
 
   Vector3D frame_0(0, 0, 1.0), frame_1(svg_width, svg_height, 1.0);
 
@@ -609,7 +620,7 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
   float frame_y0 = frame_0.y/frame_0.z;
   float frame_x1 = frame_1.x/frame_1.z;
   float frame_y1 = frame_1.y/frame_1.z;
-  Matrix3x3 t_inv = transformation.inv();
+  
 
   float eps = 1e-6;
   for(int x=floor(frame_x0); x<ceil(frame_x1);x++){
