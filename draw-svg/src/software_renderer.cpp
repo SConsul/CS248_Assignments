@@ -700,11 +700,11 @@ Color SoftwareRendererImp::alpha_blending(Color pixel_color, Color color)
   // Task 5
   // Implement alpha compositing
   float eps = 1e-5;
-  pixel_color.a = 1.0 - (1.0-color.a)*(1-pixel_color.a);
 
   pixel_color.r = (1.0-color.a)*pixel_color.r*pixel_color.a + color.r*color.a;
   pixel_color.g = (1.0-color.a)*pixel_color.g*pixel_color.a + color.g*color.a;
   pixel_color.b = (1.0-color.a)*pixel_color.b*pixel_color.a + color.b*color.a;
+  pixel_color.a = 1.0 - (1.0-color.a)*(1-pixel_color.a);
 
   pixel_color.r = pixel_color.r/(pixel_color.a+eps);
   pixel_color.g = pixel_color.g/(pixel_color.a+eps);
