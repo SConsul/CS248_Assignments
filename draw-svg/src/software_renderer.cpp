@@ -13,6 +13,9 @@ using namespace std;
 namespace CS248 {
 vector<unsigned char> supersample_target; 
 
+float svg_width=0, svg_height=0;
+
+
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
@@ -78,10 +81,11 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-  printf("Inside draw_svg");
+  printf("Inside draw_svg\n");
   // set top level transformation
   transformation = canvas_to_screen;
-
+  svg_width = svg.width;
+  svg_height = svg.height;
   // canvas outline
   Vector2D a = transform(Vector2D(0, 0)); a.x--; a.y--;
   Vector2D b = transform(Vector2D(svg.width, 0)); b.x++; b.y--;
@@ -305,13 +309,11 @@ void SoftwareRendererImp::draw_ellipse( Ellipse& ellipse ) {
 }
 
 void SoftwareRendererImp::draw_image( Image& image ) {
-
   // Advanced Task
   // Render image element with rotation
 
   Vector2D p0 = transform(image.position);
   Vector2D p1 = transform(image.position + image.dimension);
-
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
 }
 
@@ -606,13 +608,41 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
+  Matrix3x3 t_inv = transformation.inv();
+  Vector3D p0(x0, y0 , 1), p1(x1, y1, 1);
+  p0 = t_inv*p0;
+  p1 = t_inv*p1;
+  x0 = p0.x/p0.z;
+  y0 = p0.y/p0.z;
+  x1 = p1.x/p1.z;
+  y1 = p1.y/p1.z;
+
+  Vector3D frame_0(0, 0, 1.0), frame_1(svg_width, svg_height, 1.0);
+
+  frame_0 = canvas_to_screen*frame_0; frame_1 = canvas_to_screen*frame_1;
+  float frame_x0 = frame_0.x/frame_0.z;
+  float frame_y0 = frame_0.y/frame_0.z;
+  float frame_x1 = frame_1.x/frame_1.z;
+  float frame_y1 = frame_1.y/frame_1.z;
+  
+
   float eps = 1e-6;
-  for(int x=floor(x0); x<=ceil(x1);x++){
-    for(int y=floor(y0); y<=ceil(y1); y++){
+  for(int x=floor(frame_x0); x<ceil(frame_x1);x++){
+    for(float y=floor(frame_y0); y<ceil(frame_y1); y++){
       for(int i=0; i<this->sample_rate; i++){
         for(int j=0; j<this->sample_rate; j++){
           float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
-          float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          
+          Vector3D cxyVec(cx, cy,1.0);
+          Vector3D cxynew = t_inv*(cxyVec);
+          float cxnew = cxynew.x/cxynew.z;
+          float cynew = cxynew.y/cxynew.z;
+
+          float u = (cxnew-x0)/(x1-x0+eps), v = (cynew-y0)/(y1-y0+eps);
+
+          if(u > 1.0 || u < 0 || v > 1 || v < 0){
+            continue;
+          }
 
           // Color col = sampler->sample_nearest(tex,u,v,0);
           
@@ -621,7 +651,13 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
           /* Code for trilinear interpolation */
 #if 0
           float cx_next = cx+ 1/sample_rate, cy_next = cy + 1/sample_rate;
-          float u_next = (cx_next-x0)/(x1-x0+eps), v_next = (cy_next-y0)/(y1-y0+eps);
+
+          Vector3D cxyVec_next(cx_next, cy_next,1.0);
+          Vector3D cxynew_next = t_inv*(cxyVec);
+          float cxnew_next = cxynew.x/cxynew.z;
+          float cynew_next = cxynew.y/cxynew.z;
+
+          float u_next = (cxnew_next-x0)/(x1-x0+eps), v_next = (cynew_next-y0)/(y1-y0+eps);
 
           float du_dx = (u_next - u)*sample_rate*tex.width, dv_dy = (v_next - v)*sample_rate*tex.height;
 
@@ -629,12 +665,11 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
 #endif
 
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
-
+          
         }
       }
     }
   }
-  // 
 }
 
 // resolve samples to render target
