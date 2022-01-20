@@ -626,8 +626,10 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
           float du_dx = (u_next - u)*sample_rate*tex.width, dv_dy = (v_next - v)*sample_rate*tex.height;
 
           Color col = sampler->sample_trilinear(tex, u, v, abs(du_dx), abs(dv_dy));
-          fill_sample(x*sample_rate+i,y*sample_rate+j,col);
 #endif
+
+          fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+
         }
       }
     }
