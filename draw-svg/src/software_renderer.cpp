@@ -328,19 +328,7 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
   // check bounds
   if (sx < 0 || sx >= target_w) return;
   if (sy < 0 || sy >= target_h) return;
-
-  // fill sample - NOT doing alpha blending!
-  // TODO: Call fill_pixel here to run alpha blending
-  // render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
-  // render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
-  // render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
-  // render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
-
-  // for(int i=0; i<sample_rate; i++){
-  //   for(int j=0; j<sample_rate; j++){
-  //     fill_sample(x*sample_rate+i,y*sample_rate+j,color);
-  //   }
-  // }
+  
   fill_pixel(x, y, color);
 }
 void SoftwareRendererImp::line_helper_1(bool flipped,
