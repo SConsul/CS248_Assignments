@@ -14,6 +14,10 @@ namespace CS248 {
 vector<unsigned char> supersample_target; 
 
 float cosine = 0, sine = 0;
+Vector2D prot;
+
+float svg_width=0, svg_height=0;
+
 
 // Implements SoftwareRenderer //
 
@@ -80,10 +84,11 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-  printf("Inside draw_svg");
+  printf("Inside draw_svg\n");
   // set top level transformation
   transformation = canvas_to_screen;
-
+  svg_width = svg.width;
+  svg_height = svg.height;
   // canvas outline
   Vector2D a = transform(Vector2D(0, 0)); a.x--; a.y--;
   Vector2D b = transform(Vector2D(svg.width, 0)); b.x++; b.y--;
@@ -306,13 +311,22 @@ void SoftwareRendererImp::draw_image( Image& image ) {
 
   // Advanced Task
   // Render image element with rotation
-
-  Vector2D p0 = transform(image.position);
-  Vector2D p1 = transform(image.position + image.dimension);
-
-  cosine = image.transform(0,0);
-  sine = image.transform(0,1);
-
+  // cout<<image.position.x<<" "<<image.position.y<<endl;
+  // cout<<(image.position + image.dimension).x<<" "<<(image.position + image.dimension).y<<endl;
+  // Vector2D p0 = transform(image.position);
+  // Vector2D p1 = transform(image.position + image.dimension);
+  // Vector2D crot(image.transform(0,2),image.transform(1,2));
+  // prot = transform(crot);  
+  // cosine = image.transform(0,0);
+  // sine = image.transform(0,1);
+  // cout<<"p0= "<<p0.x<<" "<<p0.y<<endl;
+  // cout<<"p1= "<<p1.x<<" "<<p1.y<<endl;
+  // cout<<"crot= "<<crot.x<<" "<<crot.y<<endl;
+  // cout<<"prot= "<<prot.x<<" "<<prot.y<<endl;
+  // cout<<"sine= "<<sine<<" cosine="<<cosine<<endl;
+  cout<<transformation<<endl;
+  Vector2D p0 = image.position;
+  Vector2D p1 = image.position + image.dimension;
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
 }
 
@@ -607,43 +621,44 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
-  cosine = 0.707; sine=0.707; 
-  double rotx = 128, roty= -54;
 
-  double data[9] = {1, 0, rotx-tex.width/2, 0, 1, roty-tex.height/2, 0, 0, 1};
-  Matrix3x3 m1(data);
-  double data2[9] = {cosine, sine, 0, -1*sine, cosine, 0, 0, 0, 1};
-  Matrix3x3 m2(data2);
+  Vector3D frame_0(0, 0, 1.0), frame_1(svg_width, svg_height, 1.0);
 
-  double data3[9] = {1, 0, tex.width/2, 0, 1, tex.height/2, 0, 0, 1};
-  Matrix3x3 m3(data3);
-  Matrix3x3 m4 = m1*m2*m3;
-
-  // double data3[9] = {0.707, -0.707, 128, 0.707, 0.707, -54, 0, 0, 1};
-  // Matrix3x3 m4(data3);
-
-  Vector3D xy0Vec(x0, y0, 1);
-  Vector3D xy0new = m4*xy0Vec;
-  float x0new = xy0new[0]/xy0new[2];
-  float y0new = xy0new[1]/xy0new[2];
-
-  Vector3D xy1Vec(x1, y1, 1);
-  Vector3D xy1new = m4*xy1Vec;
-  float x1new = xy1new[0]/xy1new[2];
-  float y1new = xy1new[1]/xy1new[2];
+  frame_0 = canvas_to_screen*frame_0; frame_1 = canvas_to_screen*frame_1;
+  float frame_x0 = frame_0.x/frame_0.z;
+  float frame_y0 = frame_0.y/frame_0.z;
+  float frame_x1 = frame_1.x/frame_1.z;
+  float frame_y1 = frame_1.y/frame_1.z;
+  Matrix3x3 t_inv = transformation.inv();
+  // t_inv(0,2)=0;
+  // t_inv(1,2)=0;
+  // p0 = this->transform(p0);
+  // p1 = this->transform(p1);
+  // p2 = this->transform(p2);
+  // p3 = this->transform(p3);
+  cout<<x0<<" "<<x1<<" "<<y0<<" "<<y1<<endl;
+  cout << "Frame coordinates ("<< frame_x0 << " " << frame_y0 << ") ("<< frame_x1 << " " << frame_y1<<")"<<endl;
 
   float eps = 1e-6;
-  for(int x=floor(x0); x<=ceil(x1);x++){
-    for(int y=floor(y0); y<=ceil(y1); y++){
+  for(int x=floor(frame_x0); x<ceil(frame_x1);x++){
+    for(float y=floor(frame_y0); y<ceil(frame_y1); y++){
       for(int i=0; i<this->sample_rate; i++){
         for(int j=0; j<this->sample_rate; j++){
-          Vector3D xyVec(x, y, 1);
-          Vector3D xynew = m4*xyVec;
-          float xnew = xynew[0]/xynew[2];
-          float ynew = xynew[1]/xynew[2];
-          float cx = xnew+(0.5/sample_rate)+i/sample_rate, cy = ynew+(0.5/sample_rate)+j/sample_rate;
-          float u = (cx-x0new)/(x1new-x0new+eps), v = (cy-y0new)/(y1new-y0new+eps);
-          cout<<"x0="<<x0<<" x1="<<x1<<" cx="<<cx<<endl;
+          float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
+
+          Vector3D cxyVec(cx, cy,1.0);
+          Vector3D cxynew = t_inv*(cxyVec);
+          float cxnew = cxynew.x/cxynew.z;
+          float cynew = cxynew.y/cxynew.z;
+
+          float u = (cxnew-x0)/(x1-x0+eps), v = (cynew-y0)/(y1-y0+eps);
+
+          if(u > 1.0 || u < 0 || v > 1 || v < 0){
+            continue;
+          }
+          //cout << "Hello " <<cxnew<<" "<<cynew<<endl;
+          Color col = sampler->sample_bilinear(tex,u,v,0);
+          // cout<<"x0="<<x0<<" x1="<<x1<<" cx="<<cx<<endl;
           // cout << "Initial uv: " << u << " "<< v << endl;
           // Vector3D uvVec(u, v, 1);
           // Vector3D rotatedUV = m4.inv()*uvVec;
@@ -651,14 +666,26 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
           // v = rotatedUV[1] / rotatedUV[2];
           // cout << "Rotated uv: " << u << " " << v << endl;
           // Color col = sampler->sample_nearest(tex,u,v,0);
-          Color col = sampler->sample_bilinear(tex,u,v,0);
+          
+          // cout<<"in raster = "<<transformation<<endl;
+          
+          // if (cxnew<x1 && cxnew>0 && cynew<y1 && cynew>0)
+          // {
+          //   // fill_sample(cxnew*sample_rate,cynew*sample_rate,col);
+          //   // fill_sample(cx*sample_rate,cy*sample_rate,col);
+          //   // fill_sample(cx,cy,col);
+          // }
+          // cout<<col<<endl;
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+          
         }
       }
     }
   }
-  cout << cosine << " " << sine << endl;
-  cout<<sample_rate<<endl;
+  // cout << sine << " " << cosine << endl;
+  // cout<<"sr = "<<sample_rate<<endl;
+  // cout<<rotx<<" "<<roty<<endl;
+  // cout<<tex.width<<" "<<tex.height<<endl;
   // 
 }
 
