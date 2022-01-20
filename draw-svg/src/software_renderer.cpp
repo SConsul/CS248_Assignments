@@ -13,6 +13,9 @@ using namespace std;
 namespace CS248 {
 vector<unsigned char> supersample_target; 
 
+float svg_width=0, svg_height=0;
+
+
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
@@ -77,10 +80,11 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
-  printf("Inside draw_svg");
+  printf("Inside draw_svg\n");
   // set top level transformation
   transformation = canvas_to_screen;
-
+  svg_width = svg.width;
+  svg_height = svg.height;
   // canvas outline
   Vector2D a = transform(Vector2D(0, 0)); a.x--; a.y--;
   Vector2D b = transform(Vector2D(svg.width, 0)); b.x++; b.y--;
@@ -105,6 +109,10 @@ void SoftwareRendererImp::draw_svg( SVG& svg ) {
   // resolve and send to render target
   resolve();
 
+  /* At the end of rendering, we wish to free the memory used by supersample_target. 
+  As this is a vector, a destructor will automatically be called at the end of execution */
+  // supersample_target.clear(); //free buffer of supersamples
+
 }
 
 void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
@@ -115,7 +123,7 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
   this->sample_rate = sample_rate;
   // supersample_target.resize(4*this->target_h*sample_rate*this->target_w*sample_rate);
   supersample_target.resize(4*this->target_h*4*this->target_w*4);
-  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  std::fill(supersample_target.begin(),supersample_target.end(),(uint8_t) 255);
   cout<<"size of supersample_target (" << this->target_h*sample_rate<<", "<<this->target_w*sample_rate<<" ) =>"<<
   supersample_target.size()<<endl;
   // printf("Inside set_sample_rate");
@@ -125,6 +133,7 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
                                              size_t width, size_t height ) {
 
   // Task 2: 
+  cout<<"in set_render_target"<<endl;
   // You may want to modify this for supersampling support
   cout << "Calling set_render_target"<< endl;
   this->render_target = render_target;
@@ -132,7 +141,10 @@ void SoftwareRendererImp::set_render_target( unsigned char* render_target,
   this->target_h = height;
 
   supersample_target.resize(4*height*sample_rate*width*sample_rate);
-  std::fill(supersample_target.begin(),supersample_target.end(),255.0);
+  std::fill(supersample_target.begin(),supersample_target.end(),(uint8_t) 255);
+  for(int i=0;i<4*width*height;i++){
+    render_target[i]=255;
+  }
 }
 
 void SoftwareRendererImp::draw_element( SVGElement* element ) {
@@ -274,16 +286,33 @@ void SoftwareRendererImp::draw_ellipse( Ellipse& ellipse ) {
   // Advanced Task
   // Implement ellipse rasterization
 
+  Vector2D c = transform(ellipse.center);
+  Vector2D r =  transform(ellipse.center + ellipse.radius);
+  double cx = c.x;
+  double cy = c.y;
+  double rx = r.x - cx;
+  double ry = r.y - cy;
+  double pi = 3.1415926535;
+
+  int numSegments = 60;
+  double x_prev = cx+rx, y_prev=cy, x_new=0, y_new=0;
+  for(int n=0; n<=numSegments; n++){
+    double theta = 2*pi*n/numSegments;
+    x_new = cx + rx*cos(theta);
+    y_new = cy + ry*sin(theta);
+    rasterize_triangle(cx, cy, x_prev, y_prev, x_new, y_new, ellipse.style.fillColor);
+
+    x_prev = x_new; y_prev = y_new;
+  }
+
 }
 
 void SoftwareRendererImp::draw_image( Image& image ) {
-
   // Advanced Task
   // Render image element with rotation
 
   Vector2D p0 = transform(image.position);
   Vector2D p1 = transform(image.position + image.dimension);
-
   rasterize_image( p0.x, p0.y, p1.x, p1.y, image.tex );
 }
 
@@ -360,57 +389,171 @@ void SoftwareRendererImp::line_helper_2(bool flipped,
   }
 }
 
+float round(float x){
+  return floor(x+0.5);
+}
+float fpart(float x){
+  return x - floor(x);
+}
+
+float rfpart(float x){
+  return 1 - fpart(x);
+}
+
+void SoftwareRendererImp::xiaolin_wu_line( float x0, float y0,
+                                          float x1, float y1,
+                                          Color color,
+                                          int lineWidth) {
+  // reference: https://en.wikipedia.org/wiki/Xiaolin_Wu's_line_algorithm
+
+  bool steep = abs(y1-y0)>abs(x1-x0);
+  if(steep){
+    swap(x0,y0); swap(x1,y1);
+  }
+  if(x0>x1){
+    swap(x0,x1); swap(y0,y1);
+  }
+  float dx = x1-x0, dy = y1-y0;
+  float grad = 0.0;
+  if(dx==0) grad = 1.0;
+  else grad = dy/dx;
+
+  float xend = round(x0);
+  float yend = y0 + grad*(xend-x0);
+  float xgap = rfpart(x0+0.5);
+  float xpxl1 = xend, ypxl1 = floor(yend);
+
+  if(steep){
+    rasterize_point(ypxl1,   xpxl1, rfpart(yend) * xgap*color);
+    rasterize_point(ypxl1+1,   xpxl1, fpart(yend) * xgap*color);
+  }
+  else{
+    rasterize_point(xpxl1, ypxl1  , rfpart(yend) * xgap*color);
+    rasterize_point(xpxl1, ypxl1+1  , fpart(yend) * xgap*color);
+  }
+
+  float intery = yend + grad;
+  xend = round(x1);
+  yend = y1+grad*(xend-x1);
+  xgap = fpart(x1+0.5);
+  float xpxl2 = xend, ypxl2 = floor(yend);
+  if(steep){
+    rasterize_point(ypxl2  , xpxl2, rfpart(yend) * xgap*color);
+    rasterize_point(ypxl2+1, xpxl2,  fpart(yend) * xgap*color);
+  }
+  else{
+    rasterize_point(xpxl2, ypxl2,  rfpart(yend) * xgap*color);
+    rasterize_point(xpxl2, ypxl2+1, fpart(yend) * xgap*color);
+  }
+
+  if(steep){
+    for(int x=xpxl1+1; x<=xpxl2-1;x++){
+      int coordinate = floor(intery) - lineWidth/2;
+      rasterize_point(coordinate  , x, rfpart(intery)*color);
+      coordinate++;
+      int pixel_num = 1;
+      while(pixel_num < lineWidth-1){
+        rasterize_point(coordinate, x,  color); 
+        pixel_num++;
+        coordinate++;
+      }
+      rasterize_point(coordinate, x,  fpart(intery)*color); 
+      intery += grad;
+    }
+  }
+  else{
+    for(int x=xpxl1+1; x<=xpxl2-1;x++){
+      int coordinate = floor(intery) - lineWidth/2;
+      rasterize_point(x, coordinate,  rfpart(intery)*color);
+      coordinate++;
+      int pixel_num = 1;
+      while( pixel_num < lineWidth-1){
+        rasterize_point(x, coordinate, color);
+        pixel_num++;
+        coordinate++;
+      }
+      rasterize_point(x, coordinate, fpart(intery)*color);
+      intery += grad;
+    }
+  }
+
+  return;
+}
+
+
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
 
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
-  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+  // ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
 
-  // float m = (y1-y0)/(x1-x0);
-  // if(m>=0){
-  //   if(x1<x0){//order points st. pt0 is to the left of pt1
-  //     // swap(x0,x1); swap(y0,y1);
-  //     if(m<1) line_helper_1(false, x1,y1,x0,y0,color); //increment x
-  //     else line_helper_1(true, y1,x1,y0,x0,color); //increment y  
-  //   }
-  //   if(m<1) line_helper_1(false, x0,y0,x1,y1,color); //increment x
-  //   else line_helper_1(true, y0,x0,y1,x1,color); //increment y
-  // }
-  // else{
+  // Student Solution
+  float m = (y1-y0)/(x1-x0);
+  if(m>=0){
+    if(x1<x0){//order points st. pt0 is to the left of pt1
+      // swap(x0,x1); swap(y0,y1);
+      if(m<1) line_helper_1(false, x1,y1,x0,y0,color); //increment x
+      else line_helper_1(true, y1,x1,y0,x0,color); //increment y  
+    }
+    if(m<1) line_helper_1(false, x0,y0,x1,y1,color); //increment x
+    else line_helper_1(true, y0,x0,y1,x1,color); //increment y
+  }
+  else{
 
-  //   if(m>-1){
-  //     if(x1<x0){//order points st. pt0 is to the left of pt1
-  //       // swap(x0,x1); swap(y0,y1);
-  //       line_helper_2(false, x1,y1,x0,y0,color); //increment x
-  //     }
-  //     line_helper_2(false, x0,y0,x1,y1,color); //increment x
-  //   }
-  //   else {
-  //     if(y1<y0){//order points st. pt0 is below pt1
-  //       // swap(x0,x1); swap(y0,y1);
-  //       line_helper_2(true, y1,x1,y0,x0,color); //increment y
-  //     }
-  //     line_helper_2(true, y0,x0,y1,x1,color); //increment y
+    if(m>-1){
+      if(x1<x0){//order points st. pt0 is to the left of pt1
+        // swap(x0,x1); swap(y0,y1);
+        line_helper_2(false, x1,y1,x0,y0,color); //increment x
+      }
+      line_helper_2(false, x0,y0,x1,y1,color); //increment x
+    }
+    else {
+      if(y1<y0){//order points st. pt0 is below pt1
+        // swap(x0,x1); swap(y0,y1);
+        line_helper_2(true, y1,x1,y0,x0,color); //increment y
+      }
+      line_helper_2(true, y0,x0,y1,x1,color); //increment y
 
-  //   }
-  // }
+    }
+  }
+
+
   // Advanced Task
   // Drawing Smooth Lines with Line Width
+  xiaolin_wu_line(x0, y0, x1, y1, color, 1);
+}
+
+bool isTopLeft(bool windDir, float A, float B){
+  if(windDir){
+    return (A > 0 || (A==0 && B > 0));
+  }
+  else{
+    return (A < 0 || (A==0 && B < 0));
+  }
+  return false;
 }
 
 bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y){
   if(windDir){
     for(int i=0; i<3; i++){
-      if((A[i]*x - B[i]*y + C[i]) < 0){
+      float value = A[i]*x - B[i]*y + C[i];
+      if(value < 0){  // All values should be > 0
+        return false;
+      }
+      else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
     }
   }
   else{
     for(int i=0; i<3; i++){
-      if((A[i]*x - B[i]*y + C[i]) > 0){
+      float value = A[i]*x - B[i]*y + C[i];
+      if(value > 0){ // All values should be < 0
+        return false;
+      }
+      else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
     }
@@ -469,21 +612,68 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
+  Matrix3x3 t_inv = transformation.inv();
+  Vector3D p0(x0, y0 , 1), p1(x1, y1, 1);
+  p0 = t_inv*p0;
+  p1 = t_inv*p1;
+  x0 = p0.x/p0.z;
+  y0 = p0.y/p0.z;
+  x1 = p1.x/p1.z;
+  y1 = p1.y/p1.z;
+
+  Vector3D frame_0(0, 0, 1.0), frame_1(svg_width, svg_height, 1.0);
+
+  frame_0 = canvas_to_screen*frame_0; frame_1 = canvas_to_screen*frame_1;
+  float frame_x0 = frame_0.x/frame_0.z;
+  float frame_y0 = frame_0.y/frame_0.z;
+  float frame_x1 = frame_1.x/frame_1.z;
+  float frame_y1 = frame_1.y/frame_1.z;
+  
+
   float eps = 1e-6;
-  for(int x=floor(x0); x<=ceil(x1);x++){
-    for(int y=floor(y0); y<=ceil(y1); y++){
+  for(int x=floor(frame_x0); x<ceil(frame_x1);x++){
+    for(float y=floor(frame_y0); y<ceil(frame_y1); y++){
       for(int i=0; i<this->sample_rate; i++){
         for(int j=0; j<this->sample_rate; j++){
           float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
-          float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+          
+          Vector3D cxyVec(cx, cy,1.0);
+          Vector3D cxynew = t_inv*(cxyVec);
+          float cxnew = cxynew.x/cxynew.z;
+          float cynew = cxynew.y/cxynew.z;
+
+          float u = (cxnew-x0)/(x1-x0+eps), v = (cynew-y0)/(y1-y0+eps);
+
+          if(u > 1.0 || u < 0 || v > 1 || v < 0){
+            continue;
+          }
+
           // Color col = sampler->sample_nearest(tex,u,v,0);
+          
           Color col = sampler->sample_bilinear(tex,u,v,0);
+
+          /* Code for trilinear interpolation */
+#if 0
+          float cx_next = cx+ 1/sample_rate, cy_next = cy + 1/sample_rate;
+
+          Vector3D cxyVec_next(cx_next, cy_next,1.0);
+          Vector3D cxynew_next = t_inv*(cxyVec);
+          float cxnew_next = cxynew.x/cxynew.z;
+          float cynew_next = cxynew.y/cxynew.z;
+
+          float u_next = (cxnew_next-x0)/(x1-x0+eps), v_next = (cynew_next-y0)/(y1-y0+eps);
+
+          float du_dx = (u_next - u)*sample_rate*tex.width, dv_dy = (v_next - v)*sample_rate*tex.height;
+
+          Color col = sampler->sample_trilinear(tex, u, v, abs(du_dx), abs(dv_dy));
+#endif
+
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+          
         }
       }
     }
   }
-  // 
 }
 
 // resolve samples to render target
@@ -499,27 +689,22 @@ void SoftwareRendererImp::resolve( void ) {
       for(int i=0; i<sample_rate; i++){
         for(int j=0; j< sample_rate; j++){
           int sx = x*this->sample_rate+i,  sy = y*this->sample_rate+j;
-          avg_color.r += supersample_target[4*(sx+sy*target_w*sample_rate)]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3];
-          avg_color.g += supersample_target[4*(sx+sy*target_w*sample_rate)+1]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3]; 
-          avg_color.b += supersample_target[4*(sx+sy*target_w*sample_rate)+2]/255.0;// * supersample_target[4*(sx+sy*target_w*sample_rate)+3];
-          avg_color.a += supersample_target[4*(sx+sy*target_w*sample_rate)+3]/255.0;  
+          float alpha = supersample_target[4*(sx+sy*target_w*sample_rate)+3]/255.0;
+          avg_color.r += supersample_target[4*(sx+sy*target_w*sample_rate)]/255.0 * (alpha);
+          avg_color.g += supersample_target[4*(sx+sy*target_w*sample_rate)+1]/255.0 * (alpha); 
+          avg_color.b += supersample_target[4*(sx+sy*target_w*sample_rate)+2]/255.0 * (alpha);
+          avg_color.a += alpha;  
         }
       }
-      avg_color.r /= sample_rate*sample_rate;
-      avg_color.g /= sample_rate*sample_rate;
-      avg_color.b /= sample_rate*sample_rate;
       avg_color.a /= sample_rate*sample_rate;
-
-      // render_target[4 * (x + y * target_w)] = (uint8_t)(avg_color.r * 255);
-      // render_target[4 * (x + y * target_w) + 1] = (uint8_t)(avg_color.g * 255);
-	    // render_target[4 * (x + y * target_w) + 2] = (uint8_t)(avg_color.b * 255);
-	    // render_target[4 * (x + y * target_w) + 3] = (uint8_t)(avg_color.a * 255);
+      avg_color.r /= sample_rate*sample_rate*avg_color.a;
+      avg_color.g /= sample_rate*sample_rate*avg_color.a;
+      avg_color.b /= sample_rate*sample_rate*avg_color.a;
 
       fill_pixel(x,y,avg_color);
     }
   }
   
-  // supersample_target.clear(); //free buffer of supersamples
   std::fill(supersample_target.begin(),supersample_target.end(),255.0);
   return;
 

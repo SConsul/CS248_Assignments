@@ -69,11 +69,48 @@ void Sampler2DImp::generate_mips(Texture& tex, int startLevel) {
   Color colors[3] = { Color(1,0,0,1), Color(0,1,0,1), Color(0,0,1,1) };
   for(size_t i = 1; i < tex.mipmap.size(); ++i) {
 
+    /* Advanced Task: Implement MipMap
     Color c = colors[i % 3];
     MipLevel& mip = tex.mipmap[i];
 
     for(size_t i = 0; i < 4 * mip.width * mip.height; i += 4) {
       float_to_uint8( &mip.texels[i], &c.r );
+    }
+    */
+
+    MipLevel& mip = tex.mipmap[i];
+    MipLevel& mipPrev = tex.mipmap[i-1];
+    for(size_t i = 0; i < mip.width; i += 1) {
+      for(size_t j=0; j< mip.height; j++){
+        Color c;
+        Color c1, c2, c3, c4;
+        c1.r = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)]/255.0;
+        c1.g = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+1]/255.0;
+        c1.b = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+2]/255.0;
+        c1.a = mipPrev.texels[4*(2*i + 2*j*mipPrev.width)+3]/255.0;
+
+        c2.r = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)]/255.0;
+        c2.g = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+1]/255.0;
+        c2.b = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+2]/255.0;
+        c2.a = mipPrev.texels[4*(2*i + 2*j*mipPrev.width +1)+3]/255.0;
+
+        c3.r = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)]/255.0;
+        c3.g = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+1]/255.0;
+        c3.b = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+2]/255.0;
+        c3.a = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width)+3]/255.0;
+
+        c4.r = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)]/255.0;
+        c4.g = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+1]/255.0;
+        c4.b = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+2]/255.0;
+        c4.a = mipPrev.texels[4*(2*i + (2*j+1)*mipPrev.width +1)+3]/255.0;
+
+        c.r = 0.25*c1.r + 0.25*c2.r + 0.25*c3.r + 0.25*c4.r;
+        c.g = 0.25*c1.g + 0.25*c2.g + 0.25*c3.g + 0.25*c4.g;
+        c.b = 0.25*c1.b + 0.25*c2.b + 0.25*c3.b + 0.25*c4.b;
+        c.a = 0.25*c1.a + 0.25*c2.a + 0.25*c3.a + 0.25*c4.a;
+
+        float_to_uint8( &mip.texels[4*(i + j*mip.width)], &c.r);
+      }
     }
   }
 
@@ -139,7 +176,7 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   int vt = (v - int(v) >= 0.5)? int(v) : int(v)-1, vb = min(vt+1, int(tex.height-1));
 
   
-  assert(ml.height == tex.height && ml.width == tex.width);
+  // assert(ml.height == tex.height && ml.width == tex.width);
 
   Color col_lt, col_lb, col_rt, col_rb;
   int idx = 4*(ul+vt*tex.width);
@@ -179,9 +216,18 @@ Color Sampler2DImp::sample_trilinear(Texture& tex,
   // Advanced Task
   // Implement trilinear filtering
 
-  // return magenta for invalid level
-  return Color(1,0,1,1);
-
+  float L = max(u_scale, v_scale);
+  float d = log2f(L);
+  d = max(0.f,d);
+  L = max(1.f, L);
+  Color mip_low = sample_bilinear(tex,u,v,int(d));
+  Color mip_high = sample_bilinear(tex,u,v,int(d)+1);
+  
+  /* Implementation details: Interpolation of MIP levels can be done 
+  either in exponential scale or linear scale */
+  float s = (d - int(d)); // Linear scale interpolation
+  // float s = (L / (1 << int(d))) -1.0; // Exponential Scale interpolation
+  return lerp(s, mip_low, mip_high);
 }
 
 } // namespace CS248
