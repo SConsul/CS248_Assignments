@@ -176,7 +176,7 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   int vt = (v - int(v) >= 0.5)? int(int(v)+0.5) : int(int(v)-0.5), vb = min(vt+1, int(tex.height-1));
 
   
-  assert(ml.height == tex.height && ml.width == tex.width);
+  // assert(ml.height == tex.height && ml.width == tex.width);
 
   Color col_lt, col_lb, col_rt, col_rb;
   int idx = 4*(ul+vt*tex.width);
@@ -216,18 +216,18 @@ Color Sampler2DImp::sample_trilinear(Texture& tex,
   // Advanced Task
   // Implement trilinear filtering
 
-  // return magenta for invalid level
-  return Color(1,0,1,1);
-  int mip_u_lvl = (int) log2f(u_scale);
-  int mip_v_lvl = (int) log2f(v_scale);
-
-  Color u_low = sample_bilinear(tex,u,v,mip_u_lvl);
-  Color u_high = sample_bilinear(tex,u,v,mip_u_lvl+1);
-  Color v_low = sample_bilinear(tex,u,v,mip_v_lvl);
-  Color v_high = sample_bilinear(tex,u,v,mip_v_lvl+1);
-
-  float s = u_scale/(1<<mip_u_lvl) -1 , t = v_scale/(1<<mip_v_lvl) - 1;
-  return lerp(0.5, lerp(s, u_low, u_high), lerp(t, v_low, v_high));
+  float L = max(u_scale, v_scale);
+  float d = log2f(L);
+  d = max(0.f,d);
+  L = max(1.f, L);
+  Color mip_low = sample_bilinear(tex,u,v,int(d));
+  Color mip_high = sample_bilinear(tex,u,v,int(d)+1);
+  
+  /* Implementation details: Interpolation of MIP levels can be done 
+  either in exponential scale or linear scale */
+  float s = (d - int(d)); // Linear scale interpolation
+  // float s = (L / (1 << int(d))) -1.0; // Exponential Scale interpolation
+  return lerp(s, mip_low, mip_high);
 }
 
 } // namespace CS248

@@ -613,9 +613,21 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
         for(int j=0; j<this->sample_rate; j++){
           float cx = x+(0.5/sample_rate)+i/sample_rate, cy = y+(0.5/sample_rate)+j/sample_rate;
           float u = (cx-x0)/(x1-x0+eps), v = (cy-y0)/(y1-y0+eps);
+
           // Color col = sampler->sample_nearest(tex,u,v,0);
+          
           Color col = sampler->sample_bilinear(tex,u,v,0);
+
+          /* Code for trilinear interpolation */
+#if 0
+          float cx_next = cx+ 1/sample_rate, cy_next = cy + 1/sample_rate;
+          float u_next = (cx_next-x0)/(x1-x0+eps), v_next = (cy_next-y0)/(y1-y0+eps);
+
+          float du_dx = (u_next - u)*sample_rate*tex.width, dv_dy = (v_next - v)*sample_rate*tex.height;
+
+          Color col = sampler->sample_trilinear(tex, u, v, abs(du_dx), abs(dv_dy));
           fill_sample(x*sample_rate+i,y*sample_rate+j,col);
+#endif
         }
       }
     }
