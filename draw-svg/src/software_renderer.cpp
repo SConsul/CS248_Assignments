@@ -1,3 +1,9 @@
+#define LINE_RASTERIZER 1  // 0 = Reference Helper, 1 = Bresenham, 2 = Xiaolin Wu with Thickness
+#define EDGE_RULES 1 // 1 = Implement Triangle Rasterization Edge Rules
+#define INTERPOLATION 2 // 1 = Nearest sample, 2 = Bilinear, 3 = Trilinear
+
+
+
 // black 0,  white 255, a => 0 transparent, 255 opaque
 #include "software_renderer.h"
 
@@ -49,22 +55,6 @@ void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
 	// check bounds
 	if (x < 0 || x >= target_w) return;
 	if (y < 0 || y >= target_h) return;
-
-	// Color pixel_color;
-	// float inv255 = 1.0 / 255.0;
-	// pixel_color.r = render_target[4 * (x + y * target_w)] * inv255;
-	// pixel_color.g = render_target[4 * (x + y * target_w) + 1] * inv255;
-	// pixel_color.b = render_target[4 * (x + y * target_w) + 2] * inv255;
-	// pixel_color.a = render_target[4 * (x + y * target_w) + 3] * inv255;
-
-	// pixel_color = ref->alpha_blending_helper(pixel_color, color);
-
-	// render_target[4 * (x + y * target_w)] = (uint8_t)(pixel_color.r * 255);
-	// render_target[4 * (x + y * target_w) + 1] = (uint8_t)(pixel_color.g * 255);
-	// render_target[4 * (x + y * target_w) + 2] = (uint8_t)(pixel_color.b * 255);
-	// render_target[4 * (x + y * target_w) + 3] = (uint8_t)(pixel_color.a * 255);
-
-
 
   render_target[4 * (x + y * target_w)] = (uint8_t)(color.r * 255);
 	render_target[4 * (x + y * target_w) + 1] = (uint8_t)(color.g * 255);
@@ -487,9 +477,11 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
-  // ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
+#if LINE_RASTERIZER==0
+  ref->rasterize_line_helper(x0, y0, x1, y1, target_w, target_h, color, this);
 
   // Student Solution
+#elif LINE_RASTERIZER==1
   float m = (y1-y0)/(x1-x0);
   if(m>=0){
     if(x1<x0){//order points st. pt0 is to the left of pt1
@@ -522,7 +514,10 @@ void SoftwareRendererImp::rasterize_line( float x0, float y0,
 
   // Advanced Task
   // Drawing Smooth Lines with Line Width
+#elif LINE_RASTERIZER==2
   xiaolin_wu_line(x0, y0, x1, y1, color, 1);
+
+#endif
 }
 
 bool isTopLeft(bool windDir, float A, float B){
@@ -542,9 +537,11 @@ bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y
       if(value < 0){  // All values should be > 0
         return false;
       }
+      #ifdef EDGE_RULES==1
       else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
+      #endif
     }
   }
   else{
@@ -553,9 +550,11 @@ bool pointInTriangle(float* A, float* B, float*C, bool windDir, float x, float y
       if(value > 0){ // All values should be < 0
         return false;
       }
+      #ifdef EDGE_RULES==1
       else if(value == 0 && !isTopLeft(windDir, A[i], B[i])){
         return false;
       }
+      #endif
     }
   }
   return true;
@@ -647,13 +646,11 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
           if(u > 1.0 || u < 0 || v > 1 || v < 0){
             continue;
           }
-
-          // Color col = sampler->sample_nearest(tex,u,v,0);
-          
+#if INTERPOLATION==1   // Nearest Sample
+          Color col = sampler->sample_nearest(tex,u,v,0);
+#elif INTERPOLATION==2      // Bilinear Interpolation
           Color col = sampler->sample_bilinear(tex,u,v,0);
-
-          /* Code for trilinear interpolation */
-#if 0
+#elif INTERPOLATION==3     // Trilinear Interpolation
           float cx_next = cx+ 1/sample_rate, cy_next = cy + 1/sample_rate;
 
           Vector3D cxyVec_next(cx_next, cy_next,1.0);
