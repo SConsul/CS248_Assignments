@@ -2,7 +2,8 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
-
+#include <iostream>
+#include <fstream>
 #include "../geometry/halfedge.h"
 #include "debug.h"
 
@@ -75,9 +76,37 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(Halfedge_Me
     flipped edge.
 */
 std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(Halfedge_Mesh::EdgeRef e) {
+    HalfedgeRef h1 = e->halfedge();
+    HalfedgeRef h2 = h1->twin();
+    HalfedgeRef h1next = h1->next(), h2next = h2->next();
 
-    (void)e;
-    return std::nullopt;
+    //update vertices and face of h1,h2
+    h1->vertex()->halfedge() = h2next;
+    h2->vertex()->halfedge() = h1next;
+    
+    FaceRef f1 = h1->face();
+    FaceRef f2 = h2->face();
+    f1->halfedge() = h1next;
+    f2->halfedge() = h2next;
+
+    // assert(h1next->face() == h1->face());
+    // assert(h2next->face() == h2->face());
+    h1->set_neighbors(h2next->next(), h2, h1next->next()->vertex(), e, f1);
+    h2->set_neighbors(h1next->next(), h1, h2next->next()->vertex(), e, f2);
+
+
+    h1next->next()->face() = f2;
+    h2next->next()->face() = f1;
+    h1next->next()->next() = h2next;
+    h2next->next()->next() = h1next;
+
+    h1next->next() = h1;
+    h2next->next() = h2;
+
+    // assert(f1!=f2);
+    // assert(f1->halfedge()->face() == f1);
+    // assert(f2->halfedge()->face() == f2);
+    return e;
 }
 
 /*
