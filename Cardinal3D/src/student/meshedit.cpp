@@ -3,7 +3,6 @@
 #include <set>
 #include <unordered_map>
 #include <iostream>
-#include <fstream>
 #include "../geometry/halfedge.h"
 #include "debug.h"
 
@@ -102,7 +101,6 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(Halfedge_Mesh::Ed
 
     h1next->next() = h1;
     h2next->next() = h2;
-
     // assert(f1!=f2);
     // assert(f1->halfedge()->face() == f1);
     // assert(f2->halfedge()->face() == f2);
@@ -115,9 +113,57 @@ std::optional<Halfedge_Mesh::EdgeRef> Halfedge_Mesh::flip_edge(Halfedge_Mesh::Ed
     the edge that was split, rather than the new edges.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh::EdgeRef e) {
+    HalfedgeRef h = e->halfedge();
+    VertexRef v1 = h->vertex(), v2 = h->twin()->vertex(),
+              v3 = h->next()->next()->vertex(), v4 = h->twin()->next()->next()->vertex();
+    VertexRef v_new = new_vertex();
+    v_new->pos = 0.5*v1->pos+ 0.5*v2->pos;
 
-    (void)e;
-    return std::nullopt;
+    HalfedgeRef h1 = new_halfedge(), h2 = new_halfedge(), h3 = new_halfedge(), h4 = new_halfedge(),
+                h5 = new_halfedge(), h6 = new_halfedge(), h7 = new_halfedge(), h8 = new_halfedge();
+
+    EdgeRef e1 = new_edge(), e2 = new_edge(), e3 = new_edge(), e4 = new_edge();
+
+    FaceRef f1 = new_face(), f2 = new_face(), f3 = new_face(), f4 = new_face();
+
+
+    f1->halfedge() = h->next()->next();
+    f2->halfedge() = h->twin()->next();
+    f3->halfedge() = h->next();
+    f4->halfedge() = h->twin()->next()->next();
+
+    e1->halfedge() = h1;
+    e2->halfedge() = h3;
+    e3->halfedge() = h5;
+    e4->halfedge() = h7;
+
+    h1->set_neighbors(h5, h2, v1, e1, f1);
+    h2->set_neighbors(h->twin()->next(), h1, v_new, e1, f2);
+    h3->set_neighbors(h->next(), h4, v_new, e2, f3);
+    h4->set_neighbors(h8, h3, v2, e2, f4);
+    h5->set_neighbors(h->next()->next(), h6, v_new, e3, f1);
+    h6->set_neighbors(h3, h5, v3, e3, f3);
+    h7->set_neighbors(h2, h8, v4, e4, f2);
+    h8->set_neighbors(h->twin()->next()->next(), h7, v_new, e4, f4);
+
+    //edit old halfedges
+    h->next()->next()->next() = h1;
+    h->next()->next()->face() = f1;
+
+    h->next()->next() = h6;
+    h->next()->face() = f3;
+
+    h->twin()->next()->next()->next() = h4;
+    h->twin()->next()->next()->face() = f4;
+    
+    h->twin()->next()->next() = h7;
+    h->twin()->next()->face() = f2;
+    //edit v1 and v2
+    v1->halfedge() = h1;
+    v2->halfedge() = h4;
+    v_new->halfedge() = h2;
+    erase(e); erase(h->twin()->face()); erase(h->face()); erase(h->twin()); erase(h);
+    return v_new;
 }
 
 /* Note on the beveling process:
