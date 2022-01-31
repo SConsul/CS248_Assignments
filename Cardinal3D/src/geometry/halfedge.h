@@ -349,6 +349,9 @@ public:
         unsigned int id() const {
             return _id;
         }
+        void setNewPos(Vec3 pos){
+            new_pos = pos;
+        }
 
         // The vertex position
         Vec3 pos;
@@ -386,6 +389,10 @@ public:
             return _id;
         }
 
+        void setNewPos(Vec3 pos){
+            new_pos = pos;
+        }
+
     private:
         Edge(unsigned int id) : _id(id) {
         }
@@ -419,6 +426,10 @@ public:
         // Returns an id unique to this face
         unsigned int id() const {
             return _id;
+        }
+
+        void setNewPos(Vec3 pos){
+            new_pos = pos;
         }
 
     private:
