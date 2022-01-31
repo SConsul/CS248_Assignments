@@ -55,9 +55,42 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
+    if(vertices.size() - verased.size() <=3){
+        return std::nullopt;
+    }
+    int len1 = 1, len2=1;
+    HalfedgeRef h = e->halfedge();
+    // bool skip_flag = false;
+    while(h->next()!=e->halfedge() && len1<=3){
+        // skip_flag = 
+        h = h->next(); 
+        len1++;
+    }
+    h = e->halfedge()->twin();
+    while(h->next()!=e->halfedge()->twin() && len2<=3){
+        h = h->next(); 
+        len2++;
+    }
+    std::cout<<"len1= "<<len1<<" len2= "<<len2<<std::endl;
+    if( (len1<=3 && len2<=3) && 
+    (e->halfedge()->next()->twin()->vertex()->degree()<=2 ||
+     e->halfedge()->twin()->next()->twin()->vertex()->degree()<=2)){
+        return std::nullopt;
+    }
+
+    struct Changes
+    {
+        HalfedgeRef h;
+        HalfedgeRef h_twin_prev;
+    };
+
+    HalfedgeRef toBeErased[2];
+
+    Changes currChanges[2];
+    
     VertexRef v_new = new_vertex();
     v_new->pos = e->center();
-    HalfedgeRef h = e->halfedge();
+    h = e->halfedge();
     v_new->halfedge() = h->next();
 
     //iterate over edges of v0 = h->vertex()
@@ -89,6 +122,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         flag2=false;
         std::cout << "While: h: " << h->id() << std::endl;
         if(h->next()->twin()->vertex()->id() == v_new->id()){//degenerate face
+            // if(h->twin()->vertex()->degree() <=2){return std::nullopt;}
+            
             numDegeneracies++;
             std::cout << "Line 86 degenerate faces" << std::endl;
             FaceRef f1 = h->twin()->face();
@@ -107,16 +142,13 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
             }
             else{
                 std::cout << "Line 100 delete one" << std::endl;
-                h_twin_prev->next() = h->next();
-                h->next()->set_neighbors(h->twin()->next(), h->next()->twin(), h->next()->vertex(), h->next()->edge(), f1);
-                h->next()->vertex()->halfedge() = h->next();
-                v_new->halfedge() = h->next()->twin();
+                currChanges[numDegeneracies-1].h = h;
+                currChanges[numDegeneracies-1].h_twin_prev = h_twin_prev;
 
             }
             f1->halfedge() = h_twin_prev;
             
-            erase(h->face()); erase(h->edge()); 
-            erase(h->twin()); erase(h);
+            toBeErased[numDegeneracies-1] = h;
         }
         h = h->twin()->next();
 
@@ -129,12 +161,35 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         }
     }
 
+    for (int i=0; i<numDegeneracies; i++){
+        HalfedgeRef h = toBeErased[i];
+        erase(h->face()); erase(h->edge()); 
+        erase(h->twin()); erase(h);
+    }
+
+    for (int i=0; i<numDegeneracies; i++){
+        HalfedgeRef h = currChanges[i].h;
+        HalfedgeRef h_twin_prev = currChanges[i].h_twin_prev;
+        FaceRef f1 = h->twin()->face();
+
+        h_twin_prev->next() = h->next();
+        HalfedgeRef h_next_next = h->twin()->next();
+        if(h_next_next == e->halfedge() || h_next_next == e->halfedge()->twin()){
+            h_next_next = h_next_next->next();
+        }
+        h->next()->set_neighbors(h_next_next, h->next()->twin(), h->next()->vertex(), h->next()->edge(), f1);
+        h->next()->vertex()->halfedge() = h->next();
+        v_new->halfedge() = h->next()->twin();
+    }
+
 
     erase(e->halfedge()->twin()->vertex());
     erase(e->halfedge()->vertex());
     erase(e->halfedge()->twin());
     erase(e->halfedge());
     erase(e);
+
+    
     return v_new;
 }
 
