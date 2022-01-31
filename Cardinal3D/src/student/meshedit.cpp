@@ -55,9 +55,87 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
+    VertexRef v_new = new_vertex();
+    v_new->pos = e->center();
+    HalfedgeRef h = e->halfedge();
+    v_new->halfedge() = h->next();
 
-    (void)e;
-    return std::nullopt;
+    //iterate over edges of v0 = h->vertex()
+    h = e->halfedge()->twin()->next();
+    while(h!= e->halfedge()){
+        //move HE from v to v_new
+        h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
+        h = h->twin()->next(); 
+    }
+    // h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
+    
+    //iterate over edges of v1 = h->twin()->vertex()
+    h = e->halfedge()->next();
+    while(h!= e->halfedge()->twin()){
+        //move HE from v to v_new
+        h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
+        h = h->twin()->next(); 
+    }
+    // h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
+
+    // //check for degeneracy while iterating over edeges of v_new
+    h = v_new->halfedge();
+    HalfedgeRef comparisonHE = e->halfedge()->next();
+    bool flag = false;
+    bool flag2 = true;
+    int numDegeneracies = 0;
+    std::cout << "Above while: h: " << h->id() <<" v_new->he " << v_new->halfedge()->id() << std::endl;
+    while((h!=comparisonHE || flag2) && (numDegeneracies < 2) ){
+        flag2=false;
+        std::cout << "While: h: " << h->id() << std::endl;
+        if(h->next()->twin()->vertex()->id() == v_new->id()){//degenerate face
+            numDegeneracies++;
+            std::cout << "Line 86 degenerate faces" << std::endl;
+            FaceRef f1 = h->twin()->face();
+
+            HalfedgeRef h_twin_prev = h->twin();
+            while(h_twin_prev->next()!=h->twin()){
+                h_twin_prev = h_twin_prev->next();
+            }
+
+            if(h->twin() == h->next()->twin()->next()){
+                std::cout << "Line 95 delete both" << std::endl;
+                //delete both edges
+                h->next()->twin()->face()->halfedge() = h->twin()->next();
+                erase(h->next()->twin()); erase(h->next()); erase(h->next()->edge()); 
+                //possibly if deg(other v) is 2 delete
+            }
+            else{
+                std::cout << "Line 100 delete one" << std::endl;
+                h_twin_prev->next() = h->next();
+                h->next()->set_neighbors(h->twin()->next(), h->next()->twin(), h->next()->vertex(), h->next()->edge(), f1);
+                h->next()->vertex()->halfedge() = h->next();
+                v_new->halfedge() = h->next()->twin();
+
+            }
+            f1->halfedge() = h_twin_prev;
+            
+            erase(h->face()); erase(h->edge()); 
+            erase(h->twin()); erase(h);
+        }
+        h = h->twin()->next();
+
+        if(!flag && h==comparisonHE){
+            std::cout << "While change ";
+            comparisonHE = e->halfedge()->twin()->next();
+            h = comparisonHE;
+            flag = true;
+            flag2=true;
+        }
+    }
+
+
+    erase(e->halfedge()->twin()->vertex());
+    erase(e->halfedge()->vertex());
+    erase(e->halfedge()->twin());
+    erase(e->halfedge());
+    erase(e);
+    return v_new;
 }
 
 /*
