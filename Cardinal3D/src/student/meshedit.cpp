@@ -138,10 +138,14 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
     e2->halfedge() = h3;
     e3->halfedge() = h5;
 
-    // h1->set_neighbors(h5, h2, v1, e1, f1);
-    h1->next() = h5; h1->vertex() = v1; h1->edge() = e1; h1->face() = f1;
-    // h3->set_neighbors(h->next(),h4, v_new, e2, f3);
-    h3->next() = h->next(); h3->vertex() = v_new; h3->edge() = e2; h3->face() = f3;
+    h1->set_neighbors(h5, h2, v1, e1, f1);
+    h2->set_neighbors(h->twin()->next(), h1, v_new, e1, h->twin()->face()); //set face to be the virtual face
+    h3->set_neighbors(h->next(),h4, v_new, e2, f3);
+    h4->set_neighbors(h2, h3, v2, e2, h->twin()->face());
+
+    HalfedgeRef h_twin_prev = h->twin()->next();
+    while(h_twin_prev->next() != h->twin()){h_twin_prev = h_twin_prev->next();}
+    h_twin_prev->set_neighbors(h4, h_twin_prev->twin(), h_twin_prev->vertex(), h_twin_prev->edge(), h_twin_prev->face());
 
     h5->set_neighbors(h->next()->next(), h6, v_new, e3, f1);
     h6->set_neighbors(h3, h5, v3, e3, f3);
@@ -158,7 +162,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
 
     v_new->halfedge() = h3;
 
-    if(!h->is_boundary()){
+    if(!e->on_boundary()){
+        std::cout << "HE "<< h->id() << " is not boundary"<< std::endl;
         VertexRef v4 = h->twin()->next()->next()->vertex();
         HalfedgeRef  h7 = new_halfedge(), h8 = new_halfedge();
         EdgeRef e4 = new_edge();
@@ -184,9 +189,12 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
         h->twin()->next()->next() = h7;
         h->twin()->next()->face() = f2;
 
-        erase(h->twin()->face()); erase(h->twin());
+        erase(h->twin()->face());
     }
-    erase(e); erase(h->face()); erase(h);
+    else{
+        std::cout << "HE "<< h->id() << " is boundary" << std::endl;
+    }
+    erase(e); erase(h->face()); erase(h->twin()); erase(h);
     return v_new;
 }
 
