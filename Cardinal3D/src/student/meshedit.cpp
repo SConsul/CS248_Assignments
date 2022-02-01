@@ -2,6 +2,7 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
+#include <vector>
 #include <iostream>
 #include "../geometry/halfedge.h"
 #include "debug.h"
@@ -402,9 +403,162 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_face(Halfedge_Mesh::F
 
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
+    FaceRef f_new = new_face(f->is_boundary());
+    
+    HalfedgeRef h_in_prev = new_halfedge(), h_in_new, h_in_first = h_in_prev;
+    f_new->halfedge() = h_in_prev;
 
-    (void)f;
-    return std::nullopt;
+    EdgeRef e_in_prev = new_edge();
+    e_in_prev->halfedge() = h_in_prev;
+
+    HalfedgeRef h = f->halfedge(), dummy;
+    while(h->next()!=f->halfedge()){
+        std::cout<<"h = "<<h->id()<<" h_in_prev="<<h_in_prev->id()<<std::endl;
+        VertexRef v_prev = new_vertex();
+        v_prev->pos = h->vertex()->pos;
+        v_prev->halfedge() = h_in_prev;
+        h_in_new = new_halfedge(); 
+        h_in_prev->set_neighbors(h_in_new, dummy, v_prev, e_in_prev, f_new);
+        h_in_prev = h_in_new;
+        e_in_prev = new_edge();
+        e_in_prev->halfedge() = h_in_new;
+        h = h->next();
+    }
+    std::cout<<"h = "<<h->id()<<" h_in_prev="<<h_in_prev->id()<<std::endl;
+    VertexRef v_prev = new_vertex();
+    v_prev->pos = h->vertex()->pos;
+    v_prev->halfedge() = h_in_prev;
+    h_in_prev->set_neighbors(h_in_first, dummy, v_prev, e_in_prev, f_new);
+    std::cout<<"h_in_first = "<<h_in_first->id()<<std::endl;
+
+    //TESTING CODE ONLY
+    HalfedgeRef h_in_test = h_in_prev->next(), h_in_test_orig = h_in_test;
+    while(h_in_test->next()!= h_in_test_orig){
+        std::cout<<"h_in_test: ID="<<h_in_test->id()<<std::endl;
+        h_in_test = h_in_test->next();
+    }
+    std::cout<<"h_in_test: ID="<<h_in_test->id()<<std::endl;
+    //-------
+
+    HalfedgeRef h_in = h_in_prev, h_in_orig = h_in;
+    std::vector<HalfedgeRef> h_in_twins;
+    int num_sides = 0;
+    while(h_in->next()!=h_in_orig){
+        FaceRef f_side = new_face(f->is_boundary());
+        HalfedgeRef h_in_twin = new_halfedge();
+        h_in->twin() = h_in_twin;
+        std::cout<<"h_in = "<<h_in->id()<<" h_in_twin="<<h_in->twin()->id()<<std::endl;
+        h_in_twins.push_back(h_in_twin);
+        h_in_twin->face() = f_side;
+        f_side->halfedge() = h_in_twin;
+        h_in = h_in->next();
+        num_sides++;
+    }
+    FaceRef f_side = new_face(f->is_boundary());
+    HalfedgeRef h_in_twin = new_halfedge();
+    h_in->twin() = h_in_twin;
+    std::cout<<"h_in = "<<h_in->id()<<" h_in_twin="<<h_in->twin()->id()<<std::endl;
+    h_in_twins.push_back(h_in_twin);
+    h_in_twin->face() = f_side;
+    f_side->halfedge() = h_in_twin;
+    h_in = h_in->next();
+    num_sides++;
+
+    //PRINT h_in_twins vector
+    for(auto itr : h_in_twins){
+        std::cout<<itr->id()<<" ";
+    }
+    std::cout<<std::endl;
+
+    int i=0, idx;
+    while(h_in->next()!=h_in_orig){
+        idx = i-1<0 ? num_sides-1: i-1; 
+        h_in->twin()->set_neighbors(h_in_twins[idx], h_in, h_in->next()->vertex(), h_in->edge(), h_in->twin()->face());
+        std::cout<<h_in->twin()->id()<<" has next he= "<<h_in->twin()->next()->id()<<std::endl;
+        i++;
+        h_in = h_in->next();
+    }
+    idx = i-1<0 ? num_sides-1: i-1; 
+    h_in->twin()->set_neighbors(h_in_twins[idx], h_in, h_in->next()->vertex(), h_in->edge(), h_in->twin()->face());
+    std::cout<<h_in->twin()->id()<<" has next he= "<<h_in->twin()->next()->id()<<std::endl;
+    h_in = h_in->next();
+
+    //create edges connecting bevel face to original face
+    EdgeRef e_prev = new_edge(), e_new, e_prev_orig = e_prev;
+    HalfedgeRef h1_end = new_halfedge(), h1= h1_end,h2, hnext;
+    e_prev->halfedge() = h1_end;
+    std::cout<<"h_in="<<h_in->id()<<" h="<<h->id()<<std::endl;
+    std::cout<<"h_in_orig="<<h_in_orig->id()<<std::endl;
+    while(h_in->next()!=h_in_orig){
+        h2 = new_halfedge();
+        h_in->twin()->next() = h2;
+        h2->set_neighbors(h, h1, h_in->vertex(), e_prev, h_in->twin()->face());
+        h1->twin() = h2; //h1 does not exist at the start
+        h1 = new_halfedge();
+        e_new = new_edge();
+        e_new->halfedge() = h1;
+        h1->set_neighbors(h_in->twin(), dummy, h->twin()->vertex(), e_new, h_in->twin()->face());
+        
+        e_prev = e_new;
+        h->face() = h_in->twin()->face();
+        std::cout<<"Face:"<<h->face()->id()<<" h_in="<<h_in->id()<<" h_in_twin="<<h_in->twin()->id()<<" h2="<<h2->id()<<" h="<<h->id()<<" h1="<<h1->id()<<std::endl;
+        h_in = h_in->next();
+        hnext = h->next();
+        h->next() = h1;
+        h = hnext;
+        std::cout<<" loop from h1: "<<h1->id()<<" "<<h1->next()->id()<<" "<<h1->next()->next()->id()<<" "<<h1->next()->next()->next()->id()<<" "<<h1->next()->next()->next()->next()->id()<<std::endl;
+        std::cout<<" Print F loop from h1: "<<h1->face()->id()<<" "<<h1->next()->face()->id()<<" "<<h1->next()->next()->face()->id()<<" "<<h1->next()->next()->next()->face()->id()<<" "<<h1->next()->next()->next()->next()->face()->id()<<std::endl;
+    }
+    h2 = new_halfedge();
+    h_in->twin()->next() = h2;
+    h2->set_neighbors(h, h1, h_in->vertex(), e_prev, h_in->twin()->face());
+    h1->twin() = h2;
+    h1 = h1_end;
+    e_prev_orig->halfedge() = h1;
+    h1->set_neighbors(h_in->twin(), h_in_orig->twin()->next(), h->twin()->vertex(),e_prev_orig, h_in->twin()->face());
+
+    h->face() = h_in->twin()->face();
+    h->next() = h1;
+    std::cout<<"Face: "<<h->face()->id()<<" h_in_twin="<<h_in->twin()->id()<<" h2="<<h2->id()<<" h="<<h->id()<<" h1="<<h1->id()<<std::endl;
+    
+    std::cout<<" loop from h1: "<<h1->id()<<" "<<h1->next()->id()<<" "<<h1->next()->next()->id()<<" "<<h1->next()->next()->next()->id()<<" "<<h1->next()->next()->next()->next()->id()<<std::endl;
+    std::cout<<" Print F loop from h1: "<<h1->face()->id()<<" "<<h1->next()->face()->id()<<" "<<h1->next()->next()->face()->id()<<" "<<h1->next()->next()->next()->face()->id()<<" "<<h1->next()->next()->next()->next()->face()->id()<<std::endl;
+    erase(f);
+    // std::cout<<"erasing face "<<f->id()<<std::endl;
+    
+
+    HalfedgeRef h_test = f->halfedge()->twin();
+    while(h_test->next()->twin()->next()!= f->halfedge()->twin()){
+        std::cout<<h_test->twin()->id()<<" has face "<<h_test->twin()->face()->id()<<std::endl;
+        h_test = h_test->next()->twin()->next();
+    }
+    std::cout<<h_test->twin()->id()<<" has face "<<h_test->twin()->face()->id()<<std::endl;
+
+    i=1;
+    for(HalfedgeCRef h = halfedges_begin(); h != halfedges_end(); h++) {
+        std::cout<<i++<<": id="<<h->id();
+        std::cout<<" next="<<h->next()->id()<<" twin="<<h->twin()->id()<<" v="<<h->vertex()->id()<<" e="<<h->edge()->id()<<" face="<<h->face()->id()<<std::endl;
+        if(h->face()->id() == f->id()){
+            std::cout<<h->id()<<" has face "<<h->face()->id()<<std::endl;
+        }
+    }
+    i=0;
+    for(FaceRef f = faces_begin(); f != faces_end(); f++) {
+        std::cout<<i++<<": face ID="<<f->id()<<std::endl;
+        std::cout<<" he="<<f->halfedge()->id()<<std::endl;
+    }
+    i=0;
+    for(EdgeRef e = edges_begin(); e != edges_end(); e++) {
+        std::cout<<i++<<": edge ID="<<e->id()<<std::endl;
+        std::cout<<" he="<<e->halfedge()->id()<<std::endl;
+    }
+    i=0;
+    for(VertexRef v = vertices_begin(); v != vertices_end(); v++) {
+        std::cout<<i++<<": v ID="<<v->id()<<std::endl;
+        std::cout<<" he="<<v->halfedge()->id()<<std::endl;
+    }   
+    std::cout<<"Leaving bevel fn"<<std::endl;
+    return f_new;
 }
 
 /*
