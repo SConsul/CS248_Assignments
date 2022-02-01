@@ -649,10 +649,65 @@ void Halfedge_Mesh::catmullclark_subdivide_positions() {
     // rules. (These rules are outlined in the Developer Manual.)
 
     // Faces
+    for(FaceRef f = this->faces_begin(); f != this->faces_end(); f++) {
+        std::vector<Vec3> vertices;
+        HalfedgeRef h = f->halfedge();
+        while(h->next() != f->halfedge()){
+            vertices.push_back(h->vertex()->pos);
+            h=h->next();
+        }
+        vertices.push_back(h->vertex()->pos);
+        
+        Vec3 newPos(0,0,0);
+        for(auto vertex: vertices){
+            newPos += vertex / vertices.size();
+        }
+        f->setNewPos(newPos);
+    }
 
     // Edges
+    for(EdgeRef e = this->edges_begin(); e != this->edges_end(); e++) {
+        std::vector<Vec3> vertices;
+        vertices.push_back(e->halfedge()->vertex()->pos);
+        vertices.push_back(e->halfedge()->twin()->vertex()->pos);
+        vertices.push_back(e->halfedge()->face()->getNewPos());
+        vertices.push_back(e->halfedge()->twin()->face()->getNewPos());
+        Vec3 newPos(0,0,0);
+        for(auto vertex: vertices){
+            newPos += vertex / vertices.size();
+        }
+        e->setNewPos(newPos);
+    }
 
     // Vertices
+    for(VertexRef v = this->vertices_begin(); v != this->vertices_end(); v++) {
+        std::vector<Vec3> edgeMidPoints, faceNewPos;
+        int degree=0;
+
+        HalfedgeRef h = v->halfedge();
+        while(h->twin()->next() != v->halfedge()){
+            edgeMidPoints.push_back(0.5*(h->vertex()->pos + h->twin()->vertex()->pos));
+            faceNewPos.push_back(h->face()->getNewPos());
+            degree++;
+            h = h->twin()->next(); 
+        }
+        edgeMidPoints.push_back(0.5*(h->vertex()->pos + h->twin()->vertex()->pos));
+        faceNewPos.push_back(h->face()->getNewPos());
+        degree++;
+
+        Vec3 edgeNewPosAvg(0,0,0);
+        for(auto newPos: edgeMidPoints){
+            edgeNewPosAvg += newPos / edgeMidPoints.size();
+        }
+
+        Vec3 faceNewPosAvg(0,0,0);
+        for(auto newPos: faceNewPos){
+            faceNewPosAvg += newPos / faceNewPos.size();
+        }
+
+        Vec3 newPos = (faceNewPosAvg + 2*edgeNewPosAvg + (degree-3)*v->pos)/degree;
+        v->setNewPos(newPos);
+    }
 }
 
 /*

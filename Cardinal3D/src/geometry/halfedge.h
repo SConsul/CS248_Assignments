@@ -353,6 +353,10 @@ public:
             new_pos = pos;
         }
 
+        Vec3 getNewPos(){
+            return new_pos;
+        }
+
         // The vertex position
         Vec3 pos;
 
@@ -393,6 +397,10 @@ public:
             new_pos = pos;
         }
 
+        Vec3 getNewPos(){
+            return new_pos;
+        }
+
     private:
         Edge(unsigned int id) : _id(id) {
         }
@@ -430,6 +438,10 @@ public:
 
         void setNewPos(Vec3 pos){
             new_pos = pos;
+        }
+
+        Vec3 getNewPos(){
+            return new_pos;
         }
 
     private:
