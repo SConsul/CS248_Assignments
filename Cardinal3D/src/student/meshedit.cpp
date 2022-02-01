@@ -584,6 +584,25 @@ void Halfedge_Mesh::bevel_face_positions(const std::vector<Vec3>& start_position
         new_halfedges.push_back(h);
         h = h->next();
     } while(h != face->halfedge());
+    
+    Vec3 avg_pos = Vec3();
+    for(size_t i = 0; i < start_positions.size(); i++){
+            avg_pos += start_positions[i]; 
+    }
+    avg_pos /= start_positions.size();
+
+    float alpha = std::max(1e-2, 2.0*tangent_offset/3 + 1.0);
+    //std::cout<<"tangent_offset="<<tangent_offset<<"alpha ="<<alpha<<std::endl;
+    Vec3 shift = face->normal()*normal_offset;
+
+    for(size_t i = 0; i < new_halfedges.size(); i++){
+        new_halfedges[i]->vertex()->pos = start_positions[i]*alpha+avg_pos*(1-alpha) + shift;
+    }
+    if(alpha<=1e-2){
+        collapse_face(face);
+    }
+    
+
 
     (void)new_halfedges;
     (void)start_positions;
