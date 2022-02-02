@@ -1112,6 +1112,7 @@ bool Halfedge_Mesh::simplify() {
     /* Collapse best edge repeatedly */
     std::cout << "/* Collapse best edge repeatedly */" << std::endl;
     unsigned int targetNumEdges = this->edges.size()/4;
+    int numIterations = 5;
     while(this->edges.size() > targetNumEdges){
         std::cout << "NumEdges="<<this->edges.size() << std::endl;
         // Get the cheapest edge from the queue.
@@ -1164,6 +1165,9 @@ bool Halfedge_Mesh::simplify() {
         edge_records[h->edge()] = newER;
         edge_queue.insert(newER);
         
+        std::cout << "Exiting while Loop" << std::endl;
+        numIterations --;
+        if(numIterations ==0) break;
         break;
     }
 
