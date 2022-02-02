@@ -5,6 +5,7 @@
 #include <set>
 #include <sstream>
 #include <unordered_map>
+#include <iostream>
 
 #include "../gui/widgets.h"
 
@@ -383,6 +384,7 @@ std::optional<std::pair<Halfedge_Mesh::ElementRef, std::string>> Halfedge_Mesh::
         if(herased.find(h) != herased.end()) continue;
 
         if(herased.find(h->next()) != herased.end()) {
+            std::cout <<"A live halfedge's next was erased! he:" << h->id() << " henext" << h->next()->id() << std::endl;
             return {{h, "A live halfedge's next was erased!"}};
         }
         if(herased.find(h->twin()) != herased.end()) {
@@ -402,6 +404,7 @@ std::optional<std::pair<Halfedge_Mesh::ElementRef, std::string>> Halfedge_Mesh::
         if(permutation.find(h->next()) == permutation.end()) {
             permutation.insert(h->next());
         } else {
+            std::cout <<"A halfedge is the next of multiple halfedges! he:" << h->id() << std::endl;
             return {{h->next(), "A halfedge is the next of multiple halfedges!"}};
         }
     }
@@ -467,6 +470,7 @@ std::optional<std::pair<Halfedge_Mesh::ElementRef, std::string>> Halfedge_Mesh::
 
         HalfedgeRef h = f->halfedge();
         if(herased.find(h) != herased.end()) {
+            std::cout <<"A face's halfedge is erased! f:" << f->id() << " f->he:" << f->halfedge()->id()<< std::endl;
             return {{f, "A face's halfedge is erased!"}};
         }
 
