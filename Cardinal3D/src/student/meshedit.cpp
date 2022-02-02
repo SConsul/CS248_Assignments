@@ -60,11 +60,27 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         return std::nullopt;
     }
     // std::cout << "Collapsing edge " << e->id() << std::endl;
+    //check for number of adjacent vertices
+    int num_neigh_v = 0;
+    VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
+    HalfedgeRef h0 = e->halfedge()->twin()->next(), h1= e->halfedge()->next();
+    while(h0!=e->halfedge()){
+        if(!h0->is_boundary() && h0->next()->twin()->vertex()==v1) num_neigh_v++;
+        h0 = h0->twin()->next();
+    }
+    while(h1!=e->halfedge()->twin()){
+        if(!h1->is_boundary() && h1->next()->twin()->vertex()==v0) num_neigh_v++;
+        h1 = h1->twin()->next();
+    }
+    if(num_neigh_v>2){
+        std::cout<<"edge collapse would lead to non-manifold mesh"<<std::endl;
+        return std::nullopt;
+    } 
+    
+    //dangling vertex check
     int len1 = 1, len2=1;
     HalfedgeRef h = e->halfedge();
-    // bool skip_flag = false;
     while(h->next()!=e->halfedge() && len1<=3){
-        // skip_flag = 
         h = h->next(); 
         len1++;
     }
