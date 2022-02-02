@@ -824,6 +824,23 @@ struct Edge_Record {
         //    Edge_Record::optimal.
         // -> Also store the cost associated with collapsing this edge in
         //    Edge_Record::cost.
+
+        Mat4 edgeK = vertex_quadrics[e->halfedge()->vertex()] + vertex_quadrics[e->halfedge()->twin()->vertex()];
+        Vec3 b(-edgeK[0][3], -edgeK[1][3], -edgeK[2][3]);
+        edgeK[0][3]=0;edgeK[3][0]=0;edgeK[1][3]=0;edgeK[3][1]=0;edgeK[2][3]=0;edgeK[3][2]=0;edgeK[3][3]=1;
+        this->optimal = edgeK.inverse() * b;
+        
+        Vec3 temp = this->optimal * (edgeK * this->optimal);
+        this->cost = temp.x+temp.y+temp.z;
+
+        
+        // Mat4 q = Mat4::I;
+        // float t = 1.3;
+        // Vec3 w(t, 1.0, 1.0);
+        // Vec3 r(1, 1, 1);
+        // Vec3 ans = w * (q * r); (void) ans;
+        // // std::cout << ans.x << " " << ans.y << " " << ans.z << " " << std::endl;
+
     }
     Halfedge_Mesh::EdgeRef edge;
     Vec3 optimal;
@@ -951,5 +968,99 @@ bool Halfedge_Mesh::simplify() {
     // but here simply calling collapse_edge() will not erase the elements.
     // You should use collapse_edge_erase() instead for the desired behavior.
 
-    return false;
+    /* Compute Face Quadric Matrix K */
+    std::cout << "/* Compute Face Quadric Matrix K */" << std::endl;
+    for(FaceRef f = faces_begin(); f != faces_end(); f++) {        
+        Vec3 normal = f->normal();
+        Vec3 vertexPos = f->halfedge()->vertex()->pos;
+        float d = -1*(normal.x*vertexPos.x + normal.y*vertexPos.y + normal.z*vertexPos.z);
+        Vec4 v(normal.x, normal.y, normal.z, d);
+        Mat4 K = outer(v, v);
+        face_quadrics[f] = K;
+    }
+
+    /* Compute Vertex Quadric for each vertex */
+    std::cout << "/* Compute Vertex Quadric for each vertex */" << std::endl;
+    for(VertexRef v = vertices_begin(); v != vertices_end(); v++) {        
+        /* Iterate over all faces touching the vertex */
+        HalfedgeRef h = v->halfedge();
+        Mat4 K = Mat4::Zero;
+        while(h->twin()->next() != v->halfedge()){
+            K += face_quadrics[h->face()];
+            h=h->twin()->next();
+        }
+        K += face_quadrics[h->face()];
+        vertex_quadrics[v] = K;
+    }
+
+    /* EdgeRecord for each edge */
+    std::cout << "/* EdgeRecord for each edge */" << std::endl;
+    for(EdgeRef e = edges_begin(); e != edges_end(); e++) {        
+        Edge_Record newER(vertex_quadrics, e);
+        edge_records[e] = newER;
+        edge_queue.insert(newER);
+    }
+
+    /* Collapse best edge repeatedly */
+    std::cout << "/* Collapse best edge repeatedly */" << std::endl;
+    unsigned int targetNumEdges = this->edges.size()/4;
+    while(this->edges.size() > targetNumEdges){
+        std::cout << "NumEdges="<<this->edges.size() << std::endl;
+        // Get the cheapest edge from the queue.
+        Edge_Record bestER = edge_queue.top();
+        edge_queue.pop();
+
+        EdgeRef bestEdge = bestER.edge;
+        VertexRef v0 = bestEdge->halfedge()->vertex(), v1 = bestEdge->halfedge()->twin()->vertex();
+        Mat4 newQuadric = vertex_quadrics[v0] + vertex_quadrics[v1];
+
+        // Remove any edge touching either of its endpoints from the queue.
+        std::cout << "Remove any edge touching either of its endpoints from the queue.: V0" << std::endl;
+        HalfedgeRef h = v0->halfedge();
+        while(h->twin()->next() != v0->halfedge()){
+            edge_queue.remove(edge_records[h->edge()]);
+            h = h->twin()->next();
+        }
+        edge_queue.remove(edge_records[h->edge()]);
+
+        std::cout << "Remove any edge touching either of its endpoints from the queue.: V1" << std::endl;
+        h = v1->halfedge();
+        while(h->twin()->next() != v1->halfedge()){
+            edge_queue.remove(edge_records[h->edge()]);
+            h = h->twin()->next();
+        }
+        edge_queue.remove(edge_records[h->edge()]);
+
+        // Collapse the edge.
+        std::cout << "Collapsing edge "<<bestEdge->id() <<std::endl;
+        std::optional<VertexRef> newVertexOpt = collapse_edge_erase(bestEdge);
+        assert(newVertexOpt != std::nullopt);
+        VertexRef newVertex = newVertexOpt.value();
+
+        // Set the quadric of the new vertex to the quadric computed in Step 3.
+        vertex_quadrics[newVertex] = newQuadric;
+
+        // Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
+        std::cout << "Insert any edge touching the new vertex into the queue, creating new edge records for each of them." << std::endl;
+        h = newVertex->halfedge();
+        int hId = h->id(); (void) hId;
+        while(h->twin()->next() != newVertex->halfedge()){            
+            Edge_Record newER(vertex_quadrics, h->edge());
+            edge_records[h->edge()] = newER;
+            edge_queue.insert(newER);
+            h = h->twin()->next();
+            hId = h->id(); (void) hId;
+        }
+        edge_queue.remove(edge_records[h->edge()]);
+        Edge_Record newER(vertex_quadrics, h->edge());
+        edge_records[h->edge()] = newER;
+        edge_queue.insert(newER);
+        
+        break;
+    }
+
+    /* Collapse best edge repeatedly */
+    std::cout << "Exit Simplify"<<std::endl;
+
+    return true;
 }
