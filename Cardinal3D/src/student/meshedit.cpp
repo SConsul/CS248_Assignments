@@ -36,9 +36,48 @@
     edges and faces with a single face, returning the new face.
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh::VertexRef v) {
+    FaceRef f_new = new_face();
+    HalfedgeRef h_out=v->halfedge(), h_in, h_in_prev =h_out,
+                h_out_first_twin=h_out->twin(), h_out_first_next = h_out->next();
+    f_new->halfedge() = h_out_first_next;
+    std::set<HalfedgeRef> h_to_be_erased;
+    while(h_in !=h_out_first_twin){
+        std::cout<<"h_out="<<h_out->id()<<std::endl;
+        HalfedgeRef h = h_out->next();
+        h_in_prev->next() = h_out->next();
+        while(h->next()!=h_out){
+            std::cout<<h->id()<<std::endl;
+            h->vertex()->halfedge() = h;
+            h->face() = f_new;
+            h_in_prev = h;
+            h= h->next();
+        }
+        std::cout<<h->id()<<std::endl;
+        h_in = h;
+        std::cout<<"h_in="<<h_in->id()<<std::endl;
+        h_to_be_erased.insert(h_out);
 
-    (void)v;
-    return std::nullopt;
+        h_out = h_in->twin();
+    }
+    h_in_prev->next() = h_out_first_next;
+    h_out_first_next->vertex()->halfedge() = h_out_first_next;
+    
+    std::cout<<"removing "<<h_to_be_erased.size()<<" edges"<<std::endl;
+    std::set<HalfedgeRef>::iterator it = h_to_be_erased.begin();
+    int test=0;
+    while(it != h_to_be_erased.end()){
+        HalfedgeRef h = *it;
+        std::cout<<"erasing "<<h->id()<<std::endl;
+        it++;
+        erase(h->edge());
+        erase(h->face());
+        erase(h->twin());
+        erase(h);
+        test++;
+        if(test==4) break;
+    }
+    erase(v);
+    return f_new;
 }
 
 /*
