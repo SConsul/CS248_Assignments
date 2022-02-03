@@ -98,6 +98,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
     if(vertices.size() - verased.size() <=3){
         return std::nullopt;
     }
+
     //check for number of adjacent vertices
     int num_neigh_v = 0;
     VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
@@ -139,10 +140,15 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         HalfedgeRef h;
         HalfedgeRef h_twin_prev;
     };
+    Changes currChanges[2];
+
+    struct ChangesND  // Changes for non-degenerate faces
+    {
+        HalfedgeRef h, h_prev_prev;
+    };
+    std::vector<ChangesND> currChangesND;
 
     HalfedgeRef toBeErased[2];
-
-    Changes currChanges[2];
     
     VertexRef v_new = new_vertex();
     v_new->pos = e->center();
@@ -201,6 +207,24 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
             
             toBeErased[numDegeneracies-1] = h;
         }
+        else{  // Non degenerate case
+            if(h!=e->halfedge() && h!=e->halfedge()->twin()){
+                h->face()->halfedge() = h;
+
+                HalfedgeRef h_prev_prev = h;
+                while(h_prev_prev->next()->next()!=h){
+                    h_prev_prev = h_prev_prev->next();
+                }
+
+                if(h_prev_prev->next() == e->halfedge() || h_prev_prev->next() == e->halfedge()->twin()){
+                    ChangesND lChangesND;
+                    lChangesND.h = h;
+                    lChangesND.h_prev_prev = h_prev_prev;
+                    currChangesND.push_back(lChangesND);
+                }
+            }
+            
+        }
         h = h->twin()->next();
 
         if(!flag && h==comparisonHE){
@@ -232,13 +256,18 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         v_new->halfedge() = h->next()->twin();
     }
 
+    for(auto lChangesND : currChangesND){
+        lChangesND.h_prev_prev->next() = lChangesND.h;
+        lChangesND.h->vertex()->halfedge() = lChangesND.h;
+        v_new->halfedge() = lChangesND.h;
+    }
+
 
     erase(e->halfedge()->twin()->vertex());
     erase(e->halfedge()->vertex());
     erase(e->halfedge()->twin());
     erase(e->halfedge());
     erase(e);
-
     
     return v_new;
 }
