@@ -7,6 +7,9 @@
 #include "../geometry/halfedge.h"
 #include "debug.h"
 
+Halfedge_Mesh::HalfedgeRef degenerateHE[2];
+uint8_t numDegenerateHE = 0;
+
 /* Note on local operation return types:
 
     The local operations all return a std::optional<T> type. This is used so that your
@@ -56,9 +59,13 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     the new vertex created by the collapse.
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
+    numDegenerateHE = 0;
+
+    // If only 3 vertices are left, do nothing
     if(vertices.size() - verased.size() <=3){
         return std::nullopt;
     }
+    
     // std::cout << "Collapsing edge " << e->id() << std::endl;
     //check for number of adjacent vertices
     int num_neigh_v = 0;
@@ -134,12 +141,13 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
     // h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
 
     // //check for degeneracy while iterating over edeges of v_new
-    h = v_new->halfedge();
+    h = e->halfedge()->next();
     HalfedgeRef comparisonHE = e->halfedge()->next();
     bool flag = false;
     bool flag2 = true;
     int numDegeneracies = 0;
-    while((h!=comparisonHE || flag2) && (numDegeneracies < 2) ){
+    while((h!=comparisonHE || flag2) /*&& (numDegeneracies < 2) */){
+        assert(numDegeneracies < 2);
         flag2=false;
         if(h->next()->twin()->vertex()->id() == v_new->id()){//degenerate face
             // if(h->twin()->vertex()->degree() <=2){return std::nullopt;}
@@ -166,6 +174,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
             f1->halfedge() = h_twin_prev;
             
             toBeErased[numDegeneracies-1] = h;
+            degenerateHE[numDegeneracies-1] = h;
+            numDegenerateHE = numDegeneracies;
         }
         else{  // Non degenerate case
             if(h!=e->halfedge() && h!=e->halfedge()->twin()){
@@ -1155,13 +1165,16 @@ bool Halfedge_Mesh::simplify() {
         edge_queue.remove(edge_records[h->edge()]);
 
         // Collapse the edge.
-        assert(edge_queue.queue.find(bestER) == edge_queue.queue.end());
+        // assert(edge_queue.queue.find(bestER) == edge_queue.queue.end());
         std::cout << "Collapsing edge "<<bestEdge->id() <<std::endl;
         std::optional<VertexRef> newVertexOpt = collapse_edge_erase(bestEdge);
         if(newVertexOpt == std::nullopt){
             std::cout << "newVertexOpt == std::nullopt, Cannot Collapse Edge " << bestEdge->id() << std::endl;
             continue;
         } 
+        for(int i=0; i<numDegenerateHE; i++){
+            edge_queue.remove(edge_records[degenerateHE[i]->edge()]);
+        }
         VertexRef newVertex = newVertexOpt.value();
 
         // Set the quadric of the new vertex to the quadric computed in Step 3.
@@ -1188,6 +1201,14 @@ bool Halfedge_Mesh::simplify() {
         numIterations ++;
         // if(numIterations ==100) break;
         // break;
+
+        auto valResult = validate();
+        if(valResult!=std::nullopt){
+            std::pair<Halfedge_Mesh::ElementRef, std::string> object = valResult.value();
+            HalfedgeRef elem = std::get<HalfedgeRef>(object.first);
+            std::cout << elem->id() << " " << object.second <<std::endl;
+            break;
+        }
     }
 
     /* Collapse best edge repeatedly */
