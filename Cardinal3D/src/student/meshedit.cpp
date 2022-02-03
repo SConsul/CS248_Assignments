@@ -954,16 +954,10 @@ struct Edge_Record {
         edgeK[0][3]=0;edgeK[3][0]=0;edgeK[1][3]=0;edgeK[3][1]=0;edgeK[2][3]=0;edgeK[3][2]=0;edgeK[3][3]=1;
         this->optimal = edgeK.inverse() * b;
         
-        Vec3 temp = this->optimal * (edgeK * this->optimal);
-        this->cost = temp.x+temp.y+temp.z;
-
-        
-        // Mat4 q = Mat4::I;
-        // float t = 1.3;
-        // Vec3 w(t, 1.0, 1.0);
-        // Vec3 r(1, 1, 1);
-        // Vec3 ans = w * (q * r); (void) ans;
-        // // std::cout << ans.x << " " << ans.y << " " << ans.z << " " << std::endl;
+        // Vec3 temp = this->optimal * (edgeK * this->optimal);
+        // this->cost = temp.x+temp.y+temp.z;
+        this->cost = dot(this->optimal, (edgeK * this->optimal));
+        // std::cout << "EdgeRecord edge " << edge->id() << " cost " << cost << std::endl;
 
     }
     Halfedge_Mesh::EdgeRef edge;
@@ -1110,10 +1104,14 @@ bool Halfedge_Mesh::simplify() {
         HalfedgeRef h = v->halfedge();
         Mat4 K = Mat4::Zero;
         while(h->twin()->next() != v->halfedge()){
-            K += face_quadrics[h->face()];
+            if(!h->face()->is_boundary()){
+                K += face_quadrics[h->face()];
+            }
             h=h->twin()->next();
         }
-        K += face_quadrics[h->face()];
+        if(!h->face()->is_boundary()){
+            K += face_quadrics[h->face()];
+        }
         vertex_quadrics[v] = K;
     }
 
@@ -1127,10 +1125,10 @@ bool Halfedge_Mesh::simplify() {
 
     /* Collapse best edge repeatedly */
     std::cout << "/* Collapse best edge repeatedly */" << std::endl;
-    unsigned int targetNumEdges = this->edges.size()/4;
-    int numIterations = 5;
+    const unsigned int targetNumEdges = this->edges.size()/4;
+    int numIterations = 0;
     while(this->edges.size() > targetNumEdges){
-        std::cout << "NumEdges="<<this->edges.size() << std::endl;
+        std::cout << "Inside While: NumEdges="<<this->edges.size() << " Target Num Edges: " << targetNumEdges << " NumIterations: "<< numIterations << std::endl;
         // Get the cheapest edge from the queue.
         Edge_Record bestER = edge_queue.top();
         edge_queue.pop();
@@ -1157,34 +1155,39 @@ bool Halfedge_Mesh::simplify() {
         edge_queue.remove(edge_records[h->edge()]);
 
         // Collapse the edge.
+        assert(edge_queue.queue.find(bestER) == edge_queue.queue.end());
         std::cout << "Collapsing edge "<<bestEdge->id() <<std::endl;
         std::optional<VertexRef> newVertexOpt = collapse_edge_erase(bestEdge);
-        assert(newVertexOpt != std::nullopt);
+        if(newVertexOpt == std::nullopt){
+            std::cout << "newVertexOpt == std::nullopt, Cannot Collapse Edge " << bestEdge->id() << std::endl;
+            continue;
+        } 
         VertexRef newVertex = newVertexOpt.value();
 
         // Set the quadric of the new vertex to the quadric computed in Step 3.
+        std::cout << "New vertex created after edge collapse " << newVertex->id() << std::endl;
         vertex_quadrics[newVertex] = newQuadric;
 
         // Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
         std::cout << "Insert any edge touching the new vertex into the queue, creating new edge records for each of them." << std::endl;
         h = newVertex->halfedge();
-        int hId = h->id(); (void) hId;
+        // int hId = h->id(); (void) hId;
         while(h->twin()->next() != newVertex->halfedge()){            
             Edge_Record newER(vertex_quadrics, h->edge());
             edge_records[h->edge()] = newER;
             edge_queue.insert(newER);
             h = h->twin()->next();
-            hId = h->id(); (void) hId;
+            // hId = h->id(); (void) hId;
         }
-        edge_queue.remove(edge_records[h->edge()]);
+        // edge_queue.remove(edge_records[h->edge()]);
         Edge_Record newER(vertex_quadrics, h->edge());
         edge_records[h->edge()] = newER;
         edge_queue.insert(newER);
         
         std::cout << "Exiting while Loop" << std::endl;
-        numIterations --;
-        if(numIterations ==0) break;
-        break;
+        numIterations ++;
+        // if(numIterations ==100) break;
+        // break;
     }
 
     /* Collapse best edge repeatedly */
