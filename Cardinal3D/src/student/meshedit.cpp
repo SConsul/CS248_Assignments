@@ -146,8 +146,8 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
     bool flag = false;
     bool flag2 = true;
     int numDegeneracies = 0;
-    while((h!=comparisonHE || flag2) /*&& (numDegeneracies < 2) */){
-        assert(numDegeneracies < 2);
+    while((h!=comparisonHE || flag2) && (numDegeneracies < 2) ){
+        // assert(numDegeneracies < 2);
         flag2=false;
         if(h->next()->twin()->vertex()->id() == v_new->id()){//degenerate face
             // if(h->twin()->vertex()->degree() <=2){return std::nullopt;}
