@@ -75,7 +75,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
         std::cout<<"edge collapse would lead to non-manifold mesh"<<std::endl;
         return std::nullopt;
     } 
-    
+
     //dangling vertex check
     int len1 = 1, len2=1;
     HalfedgeRef h = e->halfedge();
@@ -91,6 +91,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
     if( (len1<=3 && len2<=3) && 
     (e->halfedge()->next()->twin()->vertex()->degree()<=2 ||
      e->halfedge()->twin()->next()->twin()->vertex()->degree()<=2)){
+         std::cout<<"edge collapse would lead to dangling vertex"<<std::endl;
         return std::nullopt;
     }
 
@@ -883,25 +884,101 @@ void Halfedge_Mesh::loop_subdivide() {
     (e.g. you may want to return false if this is not a triangle mesh)
 */
 bool Halfedge_Mesh::isotropic_remesh() {
+    //check if mesh is not triangular
+    for(FaceRef f=faces.begin(); f!=faces.end(); f++){
+        if(!f->is_boundary()){
+            HalfedgeRef h = f->halfedge();
+            if(h->next()->next()->next()!=h){
+                std::cout<<"Mesh is not triangular"<<std::endl;
+                return false;
+            } 
+        }
+    }
+    
+    for(int num_iter=0; num_iter<5; num_iter++){// Repeat the four main steps for 5 or 6 iterations
+         // Compute the mean edge length.
+        float mean_edge_len = 0.0;
+        int num_edges = 0;
+        for(EdgeRef e = edges_begin(); e != edges_end(); e++) {
+            if(eerased.find(e)!=eerased.end()) continue;
+            mean_edge_len+=e->length();
+            num_edges++;
+        }
+        mean_edge_len/=num_edges;
 
-    // Compute the mean edge length.
-    // Repeat the four main steps for 5 or 6 iterations
-    // -> Split edges much longer than the target length (being careful about
-    //    how the loop is written!)
-    // -> Collapse edges much shorter than the target length.  Here we need to
-    //    be EXTRA careful about advancing the loop, because many edges may have
-    //    been destroyed by a collapse (which ones?)
-    // -> Now flip each edge if it improves vertex degree
-    // -> Finally, apply some tangential smoothing to the vertex positions
+        //Split edges much longer than the target length 
+        EdgeRef e_end = edges_end();
+        for(EdgeRef e = edges_begin(); e != e_end; e++) {
+            if(eerased.find(e)!=eerased.end())  continue;
+            if(e->length() > 4.0*mean_edge_len/3){                      
+                split_edge(e);
+            }
 
-    // Note: if you erase elements in a local operation, they will not be actually deleted
-    // until do_erase or validate are called. This is to facilitate checking
-    // for dangling references to elements that will be erased.
-    // The rest of the codebase will automatically call validate() after each op,
-    // but here simply calling collapse_edge() will not erase the elements.
-    // You should use collapse_edge_erase() instead for the desired behavior.
+        }
+        do_erase();
+        // break;
+        e_end = edges_end();
+        EdgeRef e_next;
+        // -> Collapse edges much shorter than the target length
+        for(EdgeRef e = edges_begin(); e != e_end; e++) {
+            HalfedgeRef h = e->halfedge();
+            unsigned int n =0;
+            bool fin_flag=false;
+            while(h->next()->next()->next()==h){
+                h = h->twin()->next();
+                n++;
+                if(n==e->halfedge()->vertex()->degree()){
+                    h = h->twin();
+                    n=0;
+                    while(h->next()->next()->next()==h){
+                        h = h->twin()->next();
+                        n++;
+                        if(n==e->halfedge()->twin()->vertex()->degree()){
+                            fin_flag=true;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            if(fin_flag){
+                std::cout<<"FIN DETECTED"<<std::endl;
+                break;
+            }
+            e_next = h->next()->edge();
+            if(e->length() < 4.0*mean_edge_len/5){                    
+                collapse_edge_erase(e);
+            }
+            e = e_next;
+        }
+        //Flip each edge if it improves vertex degree
+        for(EdgeRef e = edges_begin(); e != edges_end(); e++) {
+            int deg_v0, deg_v1, deg_v2, deg_v3;
+            deg_v0 = e->halfedge()->vertex()->degree();
+            deg_v1 = e->halfedge()->next()->next()->vertex()->degree();
+            deg_v2 = e->halfedge()->twin()->vertex()->degree();
+            deg_v3 = e->halfedge()->twin()->next()->next()->vertex()->degree();
+            int var_init = std::abs(6-deg_v0) + std::abs(6-deg_v1) + std::abs(6-deg_v2) + std::abs(6-deg_v3);
+            int var_flip = std::abs(6-deg_v0+1) + std::abs(6-deg_v1-1) + std::abs(6-deg_v2+1) + std::abs(6-deg_v3-1);
+            if(var_flip < var_init){
+                flip_edge(e);
+            }
+        }
 
-    return false;
+        // Apply some tangential smoothing to the vertex positions
+        float w = 0.2;
+        for(int smooth_itr=0; smooth_itr<10;smooth_itr++){
+            for(VertexRef v=vertices.begin(); v!=vertices.end(); v++){//compute the centroids of all the vertices
+                Vec3 update_dir = v->neighborhood_center() - v->pos;
+                update_dir = update_dir - dot(v->normal(),update_dir)*v->normal().normalize();
+                v->new_pos = v->pos + w*update_dir;
+            }
+            for(VertexRef v=vertices.begin(); v!=vertices.end(); v++){//update pos of all vertices
+                v->pos = v->new_pos;
+            }
+        }
+    }
+    return true;
 }
 
 /* Helper type for quadric simplification */
