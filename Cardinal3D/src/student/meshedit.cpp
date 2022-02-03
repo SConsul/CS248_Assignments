@@ -405,6 +405,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
     else{
         std::cout << "HE "<< h->id() << " is boundary" << std::endl;
     }
+    h->twin()->face()->halfedge() = h2;
     erase(e); erase(h->face()); erase(h->twin()); erase(h);
     return v_new;
 }
