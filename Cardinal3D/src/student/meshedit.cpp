@@ -959,16 +959,20 @@ struct Edge_Record {
         // -> Also store the cost associated with collapsing this edge in
         //    Edge_Record::cost.
 
-        Mat4 edgeK = vertex_quadrics[e->halfedge()->vertex()] + vertex_quadrics[e->halfedge()->twin()->vertex()];
+        Halfedge_Mesh::VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
+        Mat4 edgeK = vertex_quadrics[v0] + vertex_quadrics[v1];
         Vec3 b(-edgeK[0][3], -edgeK[1][3], -edgeK[2][3]);
         edgeK[0][3]=0;edgeK[3][0]=0;edgeK[1][3]=0;edgeK[3][1]=0;edgeK[2][3]=0;edgeK[3][2]=0;edgeK[3][3]=1;
-        this->optimal = edgeK.inverse() * b;
-        
-        // Vec3 temp = this->optimal * (edgeK * this->optimal);
-        // this->cost = temp.x+temp.y+temp.z;
-        this->cost = dot(this->optimal, (edgeK * this->optimal));
-        // std::cout << "EdgeRecord edge " << edge->id() << " cost " << cost << std::endl;
-
+        if(edgeK.det() ==0 ){
+            // edgeK is not invertible
+            float cost0 = dot(v0->pos, (edgeK * v0->pos)), cost1 = dot(v1->pos, (edgeK * v1->pos));
+            this->optimal = cost0 < cost1 ? v0->pos : v1->pos;
+            this->cost = std::min(cost0, cost1);
+        }
+        else{
+            this->optimal = edgeK.inverse() * b;
+            this->cost = dot(this->optimal, (edgeK * this->optimal));
+        }
     }
     Halfedge_Mesh::EdgeRef edge;
     Vec3 optimal;
