@@ -199,8 +199,53 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
 */
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_face(Halfedge_Mesh::FaceRef f) {
 
-    (void)f;
-    return std::nullopt;
+    VertexRef vNew = new_vertex();
+    vNew->pos = f->center();
+    vNew->halfedge() = f->halfedge()->twin()->next();
+    HalfedgeRef h = f->halfedge(), hIter = h;
+
+    std::set<HalfedgeRef> hVFaceOuts; 
+    hIter = h;
+    do{
+        // VertexRef vFace = hIter->vertex();
+        HalfedgeRef hVFaceOut = hIter;
+
+        do{
+            hVFaceOuts.insert(hVFaceOut);
+            hVFaceOut = hVFaceOut->twin()->next();
+        } while(hVFaceOut != hIter);
+
+        hIter = hIter->next();
+    } while(hIter != h);
+
+    hIter = h;
+    do{
+        HalfedgeRef hIterTwin = hIter->twin(), 
+            hIterTwinPrev = prev_halfedge(hIterTwin), 
+            hIterTwinNext = hIterTwin->next();
+        hIterTwinPrev->next() = hIterTwinNext;
+        hIterTwin->face()->halfedge() = hIterTwinNext;
+        hIterTwinNext->vertex() = vNew;
+        hIter = hIter->next();
+    } while(hIter != h);
+
+    hIter = h;
+    do{
+        erase(hIter);
+        erase(hIter->twin());
+        erase(hIter->vertex());
+        erase(hIter->edge());
+
+        hIter = hIter->next();
+    } while(hIter != h);
+
+    erase(f);
+
+    for(auto hVFaceOut: hVFaceOuts){
+        hVFaceOut->vertex() = vNew;
+    }
+
+    return vNew;
 }
 
 /*
