@@ -32,6 +32,17 @@
 */
 
 /*
+    This method computes the previous Halfedge of a given Halfedge
+ */
+Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::prev_halfedge(Halfedge_Mesh::HalfedgeRef h){
+    Halfedge_Mesh::HalfedgeRef ans = h;
+    while(ans->next()!=h){
+        ans=ans->next();
+    }
+    return ans;
+}
+
+/*
     This method should replace the given vertex and all its neighboring
     edges and faces with a single face, returning the new face.
  */
@@ -85,22 +96,39 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh:
     merged face.
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::EdgeRef e) {
+    if(e->on_boundary()) return std::nullopt;
+    HalfedgeRef h=e->halfedge(), hTwin=h->twin(), 
+                hPrev = prev_halfedge(h), hNext = h->next(), 
+                hTwinPrev = prev_halfedge(hTwin), hTwinNext = hTwin->next();
 
-    (void)e;
-    return std::nullopt;
+    FaceRef fNew = new_face(h->face()->is_boundary());
+    fNew->halfedge() = hNext;
+
+    hTwinPrev->next() = hNext;
+    hPrev->next() = hTwinNext;
+
+    HalfedgeRef hItr = hPrev;
+    do{
+        hItr->face() = fNew;
+        hItr = hItr->next();
+    }
+    while(hItr!=hPrev);
+
+    h->vertex()->halfedge() = hTwinNext;
+    hTwin->vertex()->halfedge() = hNext;
+
+    erase(h->face());
+    erase(hTwin->face());
+    erase(e);
+    erase(hTwin);
+    erase(h);
+    return fNew;
 }
 
 /*
     This method should collapse the given edge and return an iterator to
     the new vertex created by the collapse.
 */
-Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::prev_halfedge(Halfedge_Mesh::HalfedgeRef h){
-    Halfedge_Mesh::HalfedgeRef ans = h;
-    while(ans->next()!=h){
-        ans=ans->next();
-    }
-    return ans;
-}
 
 std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
     HalfedgeRef h = e->halfedge(), hTwin = h->twin(); 
