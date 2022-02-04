@@ -94,182 +94,104 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_edge(Halfedge_Mesh::E
     This method should collapse the given edge and return an iterator to
     the new vertex created by the collapse.
 */
-std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
-    if(vertices.size() - verased.size() <=3){
-        return std::nullopt;
+Halfedge_Mesh::HalfedgeRef Halfedge_Mesh::prev_halfedge(Halfedge_Mesh::HalfedgeRef h){
+    Halfedge_Mesh::HalfedgeRef ans = h;
+    while(ans->next()!=h){
+        ans=ans->next();
     }
+    return ans;
+}
 
-    //check for number of adjacent vertices
+std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Mesh::EdgeRef e) {
+    HalfedgeRef h = e->halfedge(), hTwin = h->twin(); 
+    if(h->is_boundary()){
+        std::swap(h, hTwin);
+    }
+    VertexRef v0 = h->vertex(), v1 = hTwin->vertex();
+    HalfedgeRef hPrev = prev_halfedge(h), hTwinPrev = prev_halfedge(hTwin);
+    HalfedgeRef hNext = h->next(), hTwinNext = hTwin->next(); 
+    FaceRef f = h->face(), fTwin = hTwin->face();
+    HalfedgeRef hPrevTwin = hPrev->twin(), hNextTwin = hNext->twin();
+
     int num_neigh_v = 0;
-    VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
-    HalfedgeRef h0 = e->halfedge()->twin()->next(), h1= e->halfedge()->next();
-    while(h0!=e->halfedge()){
-        if(!h0->is_boundary() && h0->next()->twin()->vertex()==v1) num_neigh_v++;
+    HalfedgeRef h0 = h, h1= hTwin;
+    std::set<VertexRef> v0_neighbours;
+    do{
+        v0_neighbours.insert(h0->twin()->vertex());
         h0 = h0->twin()->next();
     }
-    while(h1!=e->halfedge()->twin()){
-        if(!h1->is_boundary() && h1->next()->twin()->vertex()==v0) num_neigh_v++;
+    while(h0 != h);
+
+    do{
+        if(std::find(v0_neighbours.begin(),v0_neighbours.end(),h1->twin()->vertex()) != v0_neighbours.end()){
+            num_neigh_v++;
+            if(num_neigh_v>2){
+                std::cout<<"edge collapse would lead to non-manifold mesh"<<std::endl;
+                return std::nullopt;
+            }
+        }
         h1 = h1->twin()->next();
     }
-    if(num_neigh_v>2){
-        std::cout<<"edge collapse would lead to non-manifold mesh"<<std::endl;
-        return std::nullopt;
-    } 
+    while(h1 !=hTwin);
 
-    //dangling vertex check
-    int len1 = 1, len2=1;
-    HalfedgeRef h = e->halfedge();
-    while(h->next()!=e->halfedge() && len1<=3){
-        h = h->next(); 
-        len1++;
+    // Change vertices of all outgoing edges of V1 to V0
+    HalfedgeRef hIteration = v1->halfedge();
+    std::cout << std::endl;
+    do {
+        hIteration->vertex() = v0;
+        hIteration = hIteration->twin()->next();
+    } while(hIteration != v1->halfedge());
+
+
+    // Check if f is a triangle
+    if(f->degree() == 3 && !f->is_boundary()){
+        hPrevTwin->twin() = hNextTwin;
+
+        hNextTwin->twin() = hPrevTwin;
+        hNextTwin->edge() = hPrev->edge();
+
+        hNextTwin->edge()->halfedge() = hNextTwin;
+
+        hPrev->vertex()->halfedge() = hNextTwin;
+
+        erase(f);
+        erase(hNext->edge());
+        erase(hNext);
+        erase(hPrev);
     }
-    h = e->halfedge()->twin();
-    while(h->next()!=e->halfedge()->twin() && len2<=3){
-        h = h->next(); 
-        len2++;
-    }
-    if( (len1<=3 && len2<=3) && 
-    (e->halfedge()->next()->twin()->vertex()->degree()<=2 ||
-     e->halfedge()->twin()->next()->twin()->vertex()->degree()<=2)){
-         std::cout<<"edge collapse would lead to dangling vertex"<<std::endl;
-        return std::nullopt;
-    }
-
-    struct Changes
-    {
-        HalfedgeRef h;
-        HalfedgeRef h_twin_prev;
-    };
-    Changes currChanges[2];
-
-    struct ChangesND  // Changes for non-degenerate faces
-    {
-        HalfedgeRef h, h_prev_prev;
-    };
-    std::vector<ChangesND> currChangesND;
-
-    HalfedgeRef toBeErased[2];
-    
-    VertexRef v_new = new_vertex();
-    v_new->pos = e->center();
-    h = e->halfedge();
-    v_new->halfedge() = h->next();
-
-    //iterate over edges of v0 = h->vertex()
-    h = e->halfedge()->twin()->next();
-    while(h!= e->halfedge()){
-        //move HE from v to v_new
-        h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
-        h = h->twin()->next(); 
-    }
-    // h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
-    
-    //iterate over edges of v1 = h->twin()->vertex()
-    h = e->halfedge()->next();
-    while(h!= e->halfedge()->twin()){
-        //move HE from v to v_new
-        h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
-        h = h->twin()->next(); 
-    }
-    // h->set_neighbors(h->next(),h->twin(),v_new, h->edge(), h->face());
-
-    // //check for degeneracy while iterating over edeges of v_new
-    h = v_new->halfedge();
-    HalfedgeRef comparisonHE = e->halfedge()->next();
-    bool flag = false;
-    bool flag2 = true;
-    int numDegeneracies = 0;
-    while((h!=comparisonHE || flag2) && (numDegeneracies < 2) ){
-        flag2=false;
-        if(h->next()->twin()->vertex()->id() == v_new->id()){//degenerate face
-            // if(h->twin()->vertex()->degree() <=2){return std::nullopt;}
-            
-            numDegeneracies++;
-            FaceRef f1 = h->twin()->face();
-
-            HalfedgeRef h_twin_prev = h->twin();
-            while(h_twin_prev->next()!=h->twin()){
-                h_twin_prev = h_twin_prev->next();
-            }
-
-            if(h->twin() == h->next()->twin()->next()){
-                //delete both edges
-                h->next()->twin()->face()->halfedge() = h->twin()->next();
-                erase(h->next()->twin()); erase(h->next()); erase(h->next()->edge()); 
-                //possibly if deg(other v) is 2 delete
-            }
-            else{
-                currChanges[numDegeneracies-1].h = h;
-                currChanges[numDegeneracies-1].h_twin_prev = h_twin_prev;
-
-            }
-            f1->halfedge() = h_twin_prev;
-            
-            toBeErased[numDegeneracies-1] = h;
-        }
-        else{  // Non degenerate case
-            if(h!=e->halfedge() && h!=e->halfedge()->twin()){
-                h->face()->halfedge() = h;
-
-                HalfedgeRef h_prev_prev = h;
-                while(h_prev_prev->next()->next()!=h){
-                    h_prev_prev = h_prev_prev->next();
-                }
-
-                if(h_prev_prev->next() == e->halfedge() || h_prev_prev->next() == e->halfedge()->twin()){
-                    ChangesND lChangesND;
-                    lChangesND.h = h;
-                    lChangesND.h_prev_prev = h_prev_prev;
-                    currChangesND.push_back(lChangesND);
-                }
-            }
-            
-        }
-        h = h->twin()->next();
-
-        if(!flag && h==comparisonHE){
-            comparisonHE = e->halfedge()->twin()->next();
-            h = comparisonHE;
-            flag = true;
-            flag2=true;
-        }
+    else{
+        hPrev->next() = hNext;
+        f->halfedge() = hNext;
     }
 
-    for (int i=0; i<numDegeneracies; i++){
-        HalfedgeRef h = toBeErased[i];
-        erase(h->face()); erase(h->edge()); 
-        erase(h->twin()); erase(h);
+    // Check if fTwin is a triangle
+    if(fTwin->degree() == 3 && !fTwin->is_boundary()){
+        HalfedgeRef hTwinPrevTwin = hTwinPrev->twin(), hTwinNextTwin = hTwinNext->twin();
+        hTwinPrevTwin->twin() = hTwinNextTwin;
+        hTwinPrevTwin->edge() = hTwinNext->edge();
+
+        hTwinNextTwin->twin() = hTwinPrevTwin;
+
+        hTwinNextTwin->edge()->halfedge() = hTwinNextTwin;
+
+        hTwinPrev->vertex()->halfedge() = hTwinNextTwin;
+
+        erase(fTwin);
+        erase(hTwinPrev->edge());
+        erase(hTwinNext);
+        erase(hTwinPrev);
+    }
+    else{
+        hTwinPrev->next() = hTwinNext;
+        fTwin->halfedge() = hTwinNext;
     }
 
-    for (int i=0; i<numDegeneracies; i++){
-        HalfedgeRef h = currChanges[i].h;
-        HalfedgeRef h_twin_prev = currChanges[i].h_twin_prev;
-        FaceRef f1 = h->twin()->face();
+    v0->halfedge() = hPrevTwin;
+    v0->pos = 0.5*(v0->pos + v1->pos);
 
-        h_twin_prev->next() = h->next();
-        HalfedgeRef h_next_next = h->twin()->next();
-        if(h_next_next == e->halfedge() || h_next_next == e->halfedge()->twin()){
-            h_next_next = h_next_next->next();
-        }
-        h->next()->set_neighbors(h_next_next, h->next()->twin(), h->next()->vertex(), h->next()->edge(), f1);
-        h->next()->vertex()->halfedge() = h->next();
-        v_new->halfedge() = h->next()->twin();
-    }
+    erase(v1); erase(e); erase(hTwin); erase(h);
 
-    for(auto lChangesND : currChangesND){
-        lChangesND.h_prev_prev->next() = lChangesND.h;
-        lChangesND.h->vertex()->halfedge() = lChangesND.h;
-        v_new->halfedge() = lChangesND.h;
-    }
-
-
-    erase(e->halfedge()->twin()->vertex());
-    erase(e->halfedge()->vertex());
-    erase(e->halfedge()->twin());
-    erase(e->halfedge());
-    erase(e);
-    
-    return v_new;
+    return v0;
 }
 
 /*
@@ -1065,6 +987,22 @@ struct Edge_Record {
         //    Edge_Record::optimal.
         // -> Also store the cost associated with collapsing this edge in
         //    Edge_Record::cost.
+
+        Halfedge_Mesh::VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
+        Mat4 edgeK = vertex_quadrics[v0] + vertex_quadrics[v1], edgeK3x3 = edgeK;
+        Vec3 b(-edgeK[0][3], -edgeK[1][3], -edgeK[2][3]);
+        edgeK3x3[0][3]=0;edgeK3x3[3][0]=0;edgeK3x3[1][3]=0;edgeK3x3[3][1]=0;edgeK3x3[2][3]=0;edgeK3x3[3][2]=0;edgeK3x3[3][3]=1;
+        if(edgeK3x3.det() ==0 ){
+            // edgeK is not invertible
+            float cost0 = dot(v0->pos, (edgeK * v0->pos)), cost1 = dot(v1->pos, (edgeK * v1->pos));
+            this->optimal = cost0 < cost1 ? v0->pos : v1->pos;
+            this->cost = std::min(cost0, cost1);
+        }
+        else{
+            this->optimal = edgeK3x3.inverse() * b;
+            Vec4 t = Vec4(optimal, 1.0f);
+            this->cost = dot(t, (edgeK * t));
+        }
     }
     Halfedge_Mesh::EdgeRef edge;
     Vec3 optimal;
@@ -1164,6 +1102,10 @@ template<class T> struct PQueue {
     further without destroying it.)
 */
 bool Halfedge_Mesh::simplify() {
+    if(vertices.size() - verased.size() <= 3){
+        std::cout << "Fewer than 3 edges remaining. Exiting Simplify" << std::endl;
+        return false;
+    }
 
     std::unordered_map<VertexRef, Mat4> vertex_quadrics;
     std::unordered_map<FaceRef, Mat4> face_quadrics;
@@ -1192,5 +1134,100 @@ bool Halfedge_Mesh::simplify() {
     // but here simply calling collapse_edge() will not erase the elements.
     // You should use collapse_edge_erase() instead for the desired behavior.
 
-    return false;
+    /* Compute Face Quadric Matrix K */
+    for(FaceRef f = faces_begin(); f != faces_end(); f++) {        
+        Vec3 normal = f->normal();
+        Vec3 vertexPos = f->halfedge()->vertex()->pos;
+        float d = -1*(normal.x*vertexPos.x + normal.y*vertexPos.y + normal.z*vertexPos.z);
+        Vec4 v(normal.x, normal.y, normal.z, d);
+        Mat4 K = outer(v, v);
+        face_quadrics[f] = K;
+    }
+
+    /* Compute Vertex Quadric for each vertex */
+    for(VertexRef v = vertices_begin(); v != vertices_end(); v++) {        
+        /* Iterate over all faces touching the vertex */
+        HalfedgeRef h = v->halfedge();
+        Mat4 K = Mat4::Zero;
+        while(h->twin()->next() != v->halfedge()){
+            if(!h->face()->is_boundary()){
+                K += face_quadrics[h->face()];
+            }
+            h=h->twin()->next();
+        }
+        if(!h->face()->is_boundary()){
+            K += face_quadrics[h->face()];
+        }
+        vertex_quadrics[v] = K;
+    }
+
+    /* EdgeRecord for each edge */
+    for(EdgeRef e = edges_begin(); e != edges_end(); e++) {        
+        Edge_Record newER(vertex_quadrics, e);
+        edge_records[e] = newER;
+        edge_queue.insert(newER);
+    }
+
+    /* Collapse best edge repeatedly */
+    const unsigned int targetNumEdges = this->edges.size()/4;
+    int numIterations = 0;
+    while(this->edges.size() > targetNumEdges && this->vertices.size() > 3){
+        // Get the cheapest edge from the queue.
+        
+        if(numIterations % 500 == 0){
+            std::cout << "Simplify: NumIterations completed: " << numIterations << std::endl;
+        }
+        numIterations++;
+
+        Edge_Record bestER;
+            bestER = edge_queue.top();
+            edge_queue.pop();
+
+        EdgeRef bestEdge = bestER.edge;
+        VertexRef v0 = bestEdge->halfedge()->vertex(), v1 = bestEdge->halfedge()->twin()->vertex();
+        Mat4 newQuadric = vertex_quadrics[v0] + vertex_quadrics[v1];
+
+        // Remove any edge touching either of its endpoints from the queue.
+        HalfedgeRef h = v0->halfedge();
+        while(h->twin()->next() != v0->halfedge()){
+            edge_queue.remove(edge_records[h->edge()]);
+            h = h->twin()->next();
+        }
+        edge_queue.remove(edge_records[h->edge()]);
+
+        h = v1->halfedge();
+        while(h->twin()->next() != v1->halfedge()){
+            edge_queue.remove(edge_records[h->edge()]);
+            h = h->twin()->next();
+        }
+        edge_queue.remove(edge_records[h->edge()]);
+
+        // Collapse the edge.
+        std::optional<VertexRef> newVertexOpt = collapse_edge(bestEdge);
+        if(newVertexOpt == std::nullopt){
+            continue;
+        } 
+        for(auto erasedEdge: eerased){
+            edge_queue.remove(edge_records[erasedEdge]);
+        }
+        do_erase();
+        VertexRef newVertex = newVertexOpt.value();
+
+        // Set the quadric of the new vertex to the quadric computed in Step 3.
+        vertex_quadrics[newVertex] = newQuadric;
+
+        // Insert any edge touching the new vertex into the queue, creating new edge records for each of them.
+        h = newVertex->halfedge();
+        while(h->twin()->next() != newVertex->halfedge()){            
+            Edge_Record newER(vertex_quadrics, h->edge());
+            edge_records[h->edge()] = newER;
+            edge_queue.insert(newER);
+            h = h->twin()->next();
+        }
+        Edge_Record newER(vertex_quadrics, h->edge());
+        edge_records[h->edge()] = newER;
+        edge_queue.insert(newER);
+    }
+
+    return true;
 }
