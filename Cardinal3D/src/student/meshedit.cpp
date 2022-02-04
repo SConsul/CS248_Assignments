@@ -136,7 +136,6 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::collapse_edge(Halfedge_Me
 
     // Change vertices of all outgoing edges of V1 to V0
     HalfedgeRef hIteration = v1->halfedge();
-    std::cout << std::endl;
     do {
         hIteration->vertex() = v0;
         hIteration = hIteration->twin()->next();
@@ -1171,7 +1170,7 @@ bool Halfedge_Mesh::simplify() {
     /* Collapse best edge repeatedly */
     const unsigned int targetNumEdges = this->edges.size()/4;
     int numIterations = 0;
-    while(this->edges.size() > targetNumEdges && this->vertices.size() > 3){
+    while(this->edges.size() > targetNumEdges && this->vertices.size() > 3 && !edge_queue.queue.empty()){
         // Get the cheapest edge from the queue.
         
         if(numIterations % 500 == 0){
@@ -1180,8 +1179,8 @@ bool Halfedge_Mesh::simplify() {
         numIterations++;
 
         Edge_Record bestER;
-            bestER = edge_queue.top();
-            edge_queue.pop();
+        bestER = edge_queue.top();
+        edge_queue.pop();
 
         EdgeRef bestEdge = bestER.edge;
         VertexRef v0 = bestEdge->halfedge()->vertex(), v1 = bestEdge->halfedge()->twin()->vertex();
