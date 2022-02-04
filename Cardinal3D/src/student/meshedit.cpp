@@ -392,12 +392,77 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
     implement!)
 */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_vertex(Halfedge_Mesh::VertexRef v) {
-
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
+    unsigned int vDeg = v->degree();
+    if(vDeg<=2){
+        std::cout<<"cannot create new face"<<std::endl;
+        return std::nullopt;
+    }
+    std::vector<EdgeRef> new_edge_list;
+    std::vector<HalfedgeRef> new_h_list;
+    std::vector<HalfedgeRef> new_hTwin_list;
+    std::vector<VertexRef> new_v_list;
+    FaceRef fNew = new_face(v->on_boundary());
+    VertexRef v_new;
+    EdgeRef e_new;
+    HalfedgeRef h_new;
+    unsigned int i;
+    for(i=0; i<vDeg; i++){
+        v_new = new_vertex();
+        new_v_list.push_back(v_new);
+        e_new = new_edge();
+        new_edge_list.push_back(e_new);
+        h_new = new_halfedge();
+        new_h_list.push_back(h_new);
+        h_new = new_halfedge();
+        new_hTwin_list.push_back(h_new);
+    }
+    std::cout<<"created all new elements"<<std::endl;
 
-    (void)v;
-    return std::nullopt;
+    assert(new_v_list.size() == vDeg);
+    assert(new_edge_list.size() == vDeg);
+    assert(new_h_list.size() == vDeg);
+    assert(new_hTwin_list.size() == vDeg);
+
+    for(i=0; i<vDeg; i++){
+        std::cout<<new_v_list[i]->id()<<" points to "<<new_h_list[i]->id()<<std::endl;
+        new_v_list[i]->halfedge() = new_h_list[i];
+        new_v_list[i]->pos = v->pos;
+        
+        new_edge_list[i]->halfedge() = new_h_list[i];
+
+        new_h_list[i]->next() = new_h_list[(i+1)%vDeg];
+        new_h_list[i]->twin() = new_hTwin_list[i];
+        new_h_list[i]->vertex() = new_v_list[i];
+        new_h_list[i]->edge() = new_edge_list[i];
+        new_h_list[i]->face() = fNew;
+
+        new_hTwin_list[i]->twin() = new_h_list[i];
+        new_hTwin_list[i]->vertex() = new_v_list[(i+1)%vDeg];
+        new_hTwin_list[i]->edge() = new_edge_list[i];
+    }
+    fNew->halfedge() = new_h_list[0];
+    std::cout<<"set relations between new "<<std::endl;
+    HalfedgeRef h = v->halfedge(), nextH;
+    i=vDeg;
+    do{ 
+        nextH = h->twin()->next();
+        std::cout<<"itr no "<<i<<": he="<<h->id()<<std::endl;
+        h->vertex() = new_v_list[i%vDeg]; 
+        h->twin()->next() = new_hTwin_list[(i+vDeg-1)%vDeg];
+        new_hTwin_list[i%vDeg]->next() = h;
+        new_hTwin_list[i%vDeg]->face() = h->face();
+        std::cout<<"F="<<h->face()->id()<<" == "<<new_hTwin_list[i%vDeg]->face()->id()<<" f->he="<<h->face()->halfedge()->id()<<std::endl;
+        i--;
+        h = nextH;
+    }
+    while(h!=v->halfedge());
+    std::cout<<"fit new with old, i= "<<i<<std::endl;
+    erase(v);
+
+
+    return fNew;
 }
 
 /*
@@ -412,9 +477,114 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::bevel_edge(Halfedge_Mesh::E
 
     // Reminder: You should set the positions of new vertices (v->pos) to be exactly
     // the same as wherever they "started from."
+    VertexRef v0 = e->halfedge()->vertex(), v1 = e->halfedge()->twin()->vertex();
+    unsigned int new_deg_0 = v0->degree() -1,
+                 new_deg_1 = v1->degree() -1,
+                 new_deg = new_deg_0+new_deg_1;
+    if(new_deg_0<=0 || new_deg_1<=0) return std::nullopt;
 
-    (void)e;
-    return std::nullopt;
+    //create new edges and vertices
+    std::vector<EdgeRef> new_edge_list;
+    std::vector<HalfedgeRef> new_h_list;
+    std::vector<HalfedgeRef> new_hTwin_list;
+    std::vector<VertexRef> new_v_list;
+    FaceRef fNew = new_face(e->on_boundary());
+
+    unsigned int i;
+    for(i=0; i<new_deg; i++){
+        new_v_list.push_back(new_vertex());
+        new_edge_list.push_back(new_edge());
+        new_h_list.push_back(new_halfedge());
+        new_hTwin_list.push_back(new_halfedge());
+    }
+    std::cout<<"created all new elements"<<std::endl;
+
+    for(i=0; i<new_deg; i++){
+        new_v_list[i]->halfedge() = new_h_list[i];
+        
+        new_edge_list[i]->halfedge() = new_h_list[i];
+
+        new_h_list[i]->next() = new_h_list[(i+1)%new_deg];
+        std::cout<<new_h_list[i]->id()<<" has next="<<new_h_list[i]->next()->id()<<std::endl;
+        new_h_list[i]->twin() = new_hTwin_list[i];
+        new_h_list[i]->vertex() = new_v_list[i];
+        new_h_list[i]->edge() = new_edge_list[i];
+        new_h_list[i]->face() = fNew;
+
+        new_hTwin_list[i]->twin() = new_h_list[i];
+        new_hTwin_list[i]->vertex() = new_v_list[(i+1)%new_deg];
+        new_hTwin_list[i]->edge() = new_edge_list[i];
+    }
+    fNew->halfedge() = new_h_list[0];
+
+
+    for(i=1; i<=new_deg_1; i++){
+        new_v_list[i]->pos = v1->pos;
+    }
+    for(i=new_deg_1+1;i<=new_deg; i++){
+        new_v_list[i%new_deg]->pos = v0->pos;
+    }
+
+    std::cout<<"set relations between new "<<std::endl;
+
+    HalfedgeRef h = e->halfedge()->twin()->next(), nextH;
+    i=new_deg;
+    while(h!=e->halfedge()){ 
+        nextH = h->twin()->next();
+        std::cout<<"v0 itr no "<<i<<": he="<<h->id()<<std::endl;
+        h->vertex() = new_v_list[i%new_deg]; 
+        h->twin()->next() = new_hTwin_list[(i+new_deg-1)%new_deg];
+        new_hTwin_list[i%new_deg]->next() = h;
+        new_hTwin_list[i%new_deg]->face() = h->face();
+        h->face()->halfedge() = h;
+        i--;
+        h = nextH;
+    }
+    h = e->halfedge()->next();
+    while(h!=e->halfedge()->twin()){ 
+        nextH = h->twin()->next();
+        std::cout<<"v1 itr no "<<i<<": he="<<h->id()<<std::endl;
+        h->vertex() = new_v_list[i%new_deg]; 
+        h->twin()->next() = new_hTwin_list[(i+new_deg-1)%new_deg];
+        new_hTwin_list[i%new_deg]->next() = h;
+        new_hTwin_list[i%new_deg]->face() = h->face();
+        h->face()->halfedge() = h;
+        i--;
+        h = nextH;
+    }
+    std::cout<<"fit new with old, i= "<<i<<std::endl;
+
+    erase(v0);
+    erase(v1);
+    erase(e->halfedge()->twin());
+    erase(e->halfedge());
+    erase(e);
+
+    std::cout<<"NEW h"<<std::endl;
+    for(unsigned int i=0; i<new_deg; i++){
+        std::cout<<new_h_list[i]->id()<<std::endl;
+    }
+    std::cout<<std::endl;
+
+    std::cout<<"NEW h"<<std::endl;
+    for(unsigned int i=0; i<new_deg; i++){
+        std::cout<<new_h_list[i]->id()<<" has next "<<new_h_list[i]->next()->id()<<std::endl;
+    }
+    std::cout<<std::endl;
+
+    std::cout<<"NEW V"<<std::endl;
+    for(unsigned int i=0; i<new_deg; i++){
+        std::cout<<new_v_list[i]->id()<<" has he "<<new_v_list[i]->halfedge()->id()<<std::endl;
+    }
+    std::cout<<std::endl;
+    
+    std::cout<<"NEW hTwin"<<std::endl;
+    for(unsigned int i=0; i<new_deg; i++){
+        std::cout<<new_hTwin_list[i]->id()<<" has next "<<new_hTwin_list[i]->next()->id()<<std::endl;
+    }
+
+    std::cout<<"Exiting bevel_edge"<<std::endl;
+    return fNew;
 }
 
 /*
@@ -542,12 +712,15 @@ void Halfedge_Mesh::bevel_vertex_positions(const std::vector<Vec3>& start_positi
     do {
         new_halfedges.push_back(h);
         h = h->next();
+        // std::cout<<"h "<<h->id()<<"has vertex v "<<h->vertex()->id()<<" who points to he "<<h->vertex()->halfedge()->id()<<std::endl;
     } while(h != face->halfedge());
+    
+    float alpha = std::min(1-1e-2, std::max(1e-2, 2.0*tangent_offset/3 + 1.0));
 
-    (void)new_halfedges;
-    (void)start_positions;
-    (void)face;
-    (void)tangent_offset;
+    for(size_t i = 0; i < new_halfedges.size(); i++){
+        Vec3 out_v_pos = new_halfedges[i]->twin()->next()->twin()->vertex()->pos;
+        new_halfedges[i]->vertex()->pos = start_positions[i]*alpha+out_v_pos*(1-alpha);
+    }
 }
 
 /*
@@ -571,8 +744,7 @@ void Halfedge_Mesh::bevel_vertex_positions(const std::vector<Vec3>& start_positi
     }
 */
 void Halfedge_Mesh::bevel_edge_positions(const std::vector<Vec3>& start_positions,
-                                         Halfedge_Mesh::FaceRef face, float tangent_offset) {
-
+                                         Halfedge_Mesh::FaceRef face, float tangent_offset) {                                          
     std::vector<HalfedgeRef> new_halfedges;
     auto h = face->halfedge();
     do {
@@ -580,10 +752,11 @@ void Halfedge_Mesh::bevel_edge_positions(const std::vector<Vec3>& start_position
         h = h->next();
     } while(h != face->halfedge());
 
-    (void)new_halfedges;
-    (void)start_positions;
-    (void)face;
-    (void)tangent_offset;
+    float alpha = std::min(1-1e-2, std::max(1e-2, 2.0*tangent_offset/3 + 1.0));
+    for(size_t i = 0; i < new_halfedges.size(); i++){
+        Vec3 out_v_pos = new_halfedges[i]->twin()->next()->twin()->vertex()->pos;
+        new_halfedges[i]->vertex()->pos = start_positions[i]*alpha+out_v_pos*(1-alpha);
+    }
 }
 
 /*
@@ -632,17 +805,9 @@ void Halfedge_Mesh::bevel_face_positions(const std::vector<Vec3>& start_position
     for(size_t i = 0; i < new_halfedges.size(); i++){
         new_halfedges[i]->vertex()->pos = start_positions[i]*alpha+avg_pos*(1-alpha) + shift;
     }
-    if(alpha<=1e-2){
-        collapse_face(face);
-    }
-    
-
-
-    (void)new_halfedges;
-    (void)start_positions;
-    (void)face;
-    (void)tangent_offset;
-    (void)normal_offset;
+    // if(alpha<=1e-2){
+    //     collapse_face(face);
+    // }
 }
 
 /*
