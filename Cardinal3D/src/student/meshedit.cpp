@@ -36,9 +36,48 @@
     edges and faces with a single face, returning the new face.
  */
 std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh::VertexRef v) {
+    FaceRef f_new = new_face();
+    HalfedgeRef h_out=v->halfedge(), h_in, h_in_prev =h_out,
+                h_out_first_twin=h_out->twin(), h_out_first_next = h_out->next();
+    f_new->halfedge() = h_out_first_next;
+    std::set<HalfedgeRef> h_to_be_erased;
+    while(h_in !=h_out_first_twin){
+        std::cout<<"h_out="<<h_out->id()<<std::endl;
+        HalfedgeRef h = h_out->next();
+        h_in_prev->next() = h_out->next();
+        while(h->next()!=h_out){
+            std::cout<<h->id()<<std::endl;
+            h->vertex()->halfedge() = h;
+            h->face() = f_new;
+            h_in_prev = h;
+            h= h->next();
+        }
+        std::cout<<h->id()<<std::endl;
+        h_in = h;
+        std::cout<<"h_in="<<h_in->id()<<std::endl;
+        h_to_be_erased.insert(h_out);
 
-    (void)v;
-    return std::nullopt;
+        h_out = h_in->twin();
+    }
+    h_in_prev->next() = h_out_first_next;
+    h_out_first_next->vertex()->halfedge() = h_out_first_next;
+    
+    std::cout<<"removing "<<h_to_be_erased.size()<<" edges"<<std::endl;
+    std::set<HalfedgeRef>::iterator it = h_to_be_erased.begin();
+    int test=0;
+    while(it != h_to_be_erased.end()){
+        HalfedgeRef h = *it;
+        std::cout<<"erasing "<<h->id()<<std::endl;
+        it++;
+        erase(h->edge());
+        erase(h->face());
+        erase(h->twin());
+        erase(h);
+        test++;
+        if(test==4) break;
+    }
+    erase(v);
+    return f_new;
 }
 
 /*
@@ -288,6 +327,7 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
     else{
         std::cout << "HE "<< h->id() << " is boundary" << std::endl;
     }
+    h->twin()->face()->halfedge() = h2;
     erase(e); erase(h->face()); erase(h->twin()); erase(h);
     return v_new;
 }
@@ -835,24 +875,6 @@ void Halfedge_Mesh::loop_subdivide() {
     (e.g. you may want to return false if this is not a triangle mesh)
 */
 bool Halfedge_Mesh::isotropic_remesh() {
-
-    // Compute the mean edge length.
-    // Repeat the four main steps for 5 or 6 iterations
-    // -> Split edges much longer than the target length (being careful about
-    //    how the loop is written!)
-    // -> Collapse edges much shorter than the target length.  Here we need to
-    //    be EXTRA careful about advancing the loop, because many edges may have
-    //    been destroyed by a collapse (which ones?)
-    // -> Now flip each edge if it improves vertex degree
-    // -> Finally, apply some tangential smoothing to the vertex positions
-
-    // Note: if you erase elements in a local operation, they will not be actually deleted
-    // until do_erase or validate are called. This is to facilitate checking
-    // for dangling references to elements that will be erased.
-    // The rest of the codebase will automatically call validate() after each op,
-    // but here simply calling collapse_edge() will not erase the elements.
-    // You should use collapse_edge_erase() instead for the desired behavior.
-
     //check if mesh is not triangular
     for(FaceRef f=faces.begin(); f!=faces.end(); f++){
         if(!f->is_boundary()){
