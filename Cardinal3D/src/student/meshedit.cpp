@@ -897,8 +897,31 @@ void Halfedge_Mesh::loop_subdivide() {
 
     // Compute updated positions for all the vertices in the original mesh, using
     // the Loop subdivision rule.
+    for(VertexRef v = vertices_begin(); v != vertices_end(); v++){
+        v->setIsNew(false);
+        
+        // Calculate new_pos of old vertices
+        int degree = v->degree();
+        float u = degree==3 ? 3/16 : 3/(8*degree);
+        HalfedgeRef hIter = v->halfedge();
+        Vec3 newPos = (1 - degree*u)*v->pos;
+        do{
+            newPos += u* hIter->twin()->vertex()->pos;
+            hIter = hIter->twin()->next();
+        }while(hIter != v->halfedge());
+        v->setNewPos(newPos);
+    }
 
     // Next, compute the updated vertex positions associated with edges.
+    for(EdgeRef e = edges_begin(); e != edges_end(); e++){
+        HalfedgeRef h = e->halfedge();
+        VertexRef vEndpoint0 = h->vertex(), 
+            vEndpoint1 = h->twin()->vertex(),
+            vOpposite0 = h->next()->twin()->vertex(),
+            vOpposite1 = h->twin()->next()->twin()->vertex();
+        e->setNewPos((3/8)*(vEndpoint0->pos + vEndpoint1->pos)
+            + (1/8)*(vOpposite0->pos + vOpposite1->pos));
+    }
 
     // Next, we're going to split every edge in the mesh, in any order. For
     // future reference, we're also going to store some information about which
