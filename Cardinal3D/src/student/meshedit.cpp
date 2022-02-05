@@ -75,7 +75,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh:
     
     std::cout<<"removing "<<h_to_be_erased.size()<<" edges"<<std::endl;
     std::set<HalfedgeRef>::iterator it = h_to_be_erased.begin();
-    int test=0;
     while(it != h_to_be_erased.end()){
         HalfedgeRef h = *it;
         std::cout<<"erasing "<<h->id()<<std::endl;
@@ -84,8 +83,6 @@ std::optional<Halfedge_Mesh::FaceRef> Halfedge_Mesh::erase_vertex(Halfedge_Mesh:
         erase(h->face());
         erase(h->twin());
         erase(h);
-        test++;
-        if(test==4) break;
     }
     erase(v);
     return f_new;
@@ -336,6 +333,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
         f3 = new_face(h->next()->is_boundary());
         f1 = new_face(h->next()->next()->is_boundary());
     }
+    else{
+        f1 = new_face();
+        f3 = new_face();
+    }
 
     f1->halfedge() = h->next()->next();
     f3->halfedge() = h->next();
@@ -376,6 +377,10 @@ std::optional<Halfedge_Mesh::VertexRef> Halfedge_Mesh::split_edge(Halfedge_Mesh:
         if(h->twin()->is_boundary()){//set boundary of faces
             f2 = new_face(h->twin()->next()->is_boundary());
             f4 = new_face(h->twin()->next()->next()->is_boundary());
+        }
+        else{
+            f2 = new_face();
+            f4 = new_face();
         }
         f2->halfedge() = h->twin()->next();
         f4->halfedge() = h->twin()->next()->next();
