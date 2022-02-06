@@ -363,7 +363,7 @@ public:
             is_new = pIsNew;
         }
 
-        bool getis_new(){
+        bool getIsNew(){
             return is_new;
         }
 
@@ -409,6 +409,14 @@ public:
 
         Vec3 getNewPos(){
             return new_pos;
+        }
+
+        void setIsNew(bool pIsNew){
+            is_new = pIsNew;
+        }
+
+        bool getIsNew(){
+            return is_new;
         }
 
     private:
