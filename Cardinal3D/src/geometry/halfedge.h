@@ -359,6 +359,14 @@ public:
             return new_pos;
         }
 
+        void setIsNew(bool pIsNew){
+            is_new = pIsNew;
+        }
+
+        bool getIsNew(){
+            return is_new;
+        }
+
         // The vertex position
         Vec3 pos;
 
@@ -401,6 +409,14 @@ public:
 
         Vec3 getNewPos(){
             return new_pos;
+        }
+
+        void setIsNew(bool pIsNew){
+            is_new = pIsNew;
+        }
+
+        bool getIsNew(){
+            return is_new;
         }
 
     private:
