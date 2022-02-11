@@ -74,7 +74,11 @@ vec3 Phong_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color, vec3 specular_color,
     // Implement diffuse and specular terms of the Phong
     // reflectance model here.
 
-    return diffuse_color;
+    vec3 R = normalize(2*dot(normalize(L),normalize(N))*normalize(N)-normalize(L));
+    float diffused_comp = max(dot(normalize(L),normalize(N)),0.0);
+    float spec_comp = pow(max(dot(R,normalize(V)),0.0),specular_exponent);
+
+    return diffused_comp*diffuse_color+spec_comp*specular_color;
 
 }
 
