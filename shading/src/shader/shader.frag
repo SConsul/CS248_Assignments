@@ -15,6 +15,7 @@ uniform bool useMirrorBRDF;         // true if mirror brdf should be used (defau
 uniform sampler2D diffuseTextureSampler;
 
 // TODO CS248 Part 3: Normal Mapping
+uniform sampler2D normalTextureSampler;
 // TODO CS248 Part 4: Environment Mapping
 
 
@@ -146,7 +147,9 @@ void main(void)
        // In other words:   tangent_space_normal = texture_value * 2.0 - 1.0;
 
        // replace this line with your implementation
-       N = normalize(normal);
+       N = texture(normalTextureSampler, texcoord).rgb;
+       N = 2*N-1.0;
+       N = tan2world*N;
 
     } else {
        N = normalize(normal);
