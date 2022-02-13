@@ -260,7 +260,17 @@ void main(void)
         //       facing out area.  Smaller values of SMOOTHING will create hard spotlights.
 
         // CS248: remove this once you perform proper attenuation computations
-        intensity = vec3(0.5, 0.5, 0.5);
+        float D = length(dir_to_surface);
+        intensity*=1/(1+D*D);
+
+        float SMOOTHING = 0.1;
+        if(angle > (1.0 + SMOOTHING)* cone_angle){
+            intensity = vec3(0,0,0);
+        }
+        else if(angle > (1.0-SMOOTHING)*cone_angle){
+            float t = ((1.0 + SMOOTHING)* cone_angle - angle) / (2*SMOOTHING*cone_angle);
+            intensity *= t;
+        }
 
 
         // Render Shadows for all spot lights
