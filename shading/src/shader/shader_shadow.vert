@@ -9,7 +9,7 @@ uniform vec3 camera_position;           // world space camera position
 uniform mat4 mvp;                       // ModelViewProjection Matrix
 
 uniform bool useNormalMapping;         // true if normal mapping should be used
-uniform mat4 obj2LightMatrix[MAX_NUM_LIGHTS];
+uniform mat4 world2LightMatrix[MAX_NUM_LIGHTS];
 // per vertex input attributes 
 in vec3 vtx_position;            // object space position
 in vec3 vtx_tangent;
@@ -41,7 +41,7 @@ void main(void)
     // Recall for shadow mapping we need to know the position of the surface relative
     // to each shadowed light source.
     for(int i=0; i<num_spot_lights; i++){
-        lightspace_position[i] = obj2LightMatrix[i]*vec4(vtx_position,1.0);
+        lightspace_position[i] = world2LightMatrix[i]*obj2world*vec4(vtx_position,1.0);
     }
     
 

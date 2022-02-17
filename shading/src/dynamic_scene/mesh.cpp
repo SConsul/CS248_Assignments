@@ -362,7 +362,7 @@ void Mesh::internalDraw(bool shadowPass, const Matrix4x4& worldToNDC) const {
         // Shadow Map given any point on the object.
         // For examples of passing arrays to the shader, look below for "directional_light_vectors[]" etc.
 		for (int j=0; j<scene_->getNumSpotLights(); j++) {
-            string varname = "obj2LightMatrix[" + std::to_string(j) + "]";
+            string varname = "world2LightMatrix[" + std::to_string(j) + "]";
             shader_->setMatrixParameter(varname, scene_->getWorldToShadowLight(j));
         }
 
