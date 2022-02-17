@@ -24,7 +24,7 @@ out vec2 texcoord;
 out vec3 dir2camera;                // world space vector from surface point to camera
 out vec3 normal;
 out mat3 tan2world;                 // tangent space rotation matrix multiplied by obj2WorldNorm
-out vec4 light_position[MAX_NUM_LIGHTS];
+out vec4 lightspace_position[MAX_NUM_LIGHTS];
 void main(void)
 {
     position = vec3(obj2world * vec4(vtx_position, 1));
@@ -41,7 +41,7 @@ void main(void)
     // Recall for shadow mapping we need to know the position of the surface relative
     // to each shadowed light source.
     for(int i=0; i<num_spot_lights; i++){
-        light_position[i] = obj2LightMatrix[i]*vec4(vtx_position,1.0);
+        lightspace_position[i] = obj2LightMatrix[i]*vec4(vtx_position,1.0);
     }
     
 

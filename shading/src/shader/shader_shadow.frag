@@ -18,6 +18,7 @@ uniform sampler2D diffuseTextureSampler;
 uniform sampler2D normalTextureSampler;
 // TODO CS248 Part 4: Environment Mapping
 uniform sampler2D environmentSampler;
+uniform sampler2D shadowSampler;
 
 
 //
@@ -54,6 +55,7 @@ in vec3 normal;       // surface normal
 in vec3 dir2camera;   // vector from surface point to camera
 in mat3 tan2world;    // tangent space to world space transform
 in vec3 vertex_diffuse_color; // surface color
+in vec4 lightspace_position[MAX_NUM_LIGHTS];
 
 out vec4 fragColor;
 
@@ -275,6 +277,15 @@ void main(void)
 
         // Render Shadows for all spot lights
         // TODO CS248 Part 5.2: Shadow Mapping: comute shadowing for spotlight i here 
+        vec4 position_shadowlight = lightspace_position[i];
+        vec2 shadow_uv = position_shadowlight.xy / position_shadowlight.w;
+        float closestDistance = texture(shadowSampler, shadow_uv).r;
+        vec3 v = vec3(position_shadowlight.x, position_shadowlight.y, position_shadowlight.z);
+        float light2PointDistance = length(v)/ position_shadowlight.w;
+        // float light2PointDistance = position_shadowlight.z/ position_shadowlight.w;
+        if(closestDistance < light2PointDistance){
+            intensity *= 0.0;
+        }
 
 
 	    vec3 L = normalize(-spot_light_directions[i]);
