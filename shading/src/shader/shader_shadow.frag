@@ -279,16 +279,33 @@ void main(void)
         vec4 position_shadowlight = lightspace_position[i];
         vec3 lightspace3D = position_shadowlight.xyz / position_shadowlight.w;
         vec2 shadow_uv = lightspace3D.xy;
-        float closestDistance = texture(shadowSampler, vec3(shadow_uv, i)).x;
         float light2PointDistance = lightspace3D.z;
-        float bias = -0.0;
-        if(closestDistance + bias < light2PointDistance){
-            intensity *= 0.2;
-        }
-        else{
-            intensity *= 2.0;
-        }
+        // float closestDistance = texture(shadowSampler, vec3(shadow_uv, i)).x;
+        
+        // float light2PointDistance = lightspace3D.z;
+        // float bias = -0.0;
+        // if(closestDistance < light2PointDistance){
+        //     intensity *= 0.2;
+        // }
+        // else{
+        //     intensity *= 2.0;
+        // }
 
+        float pcf_step_size = 256;
+        int num_ilum = 0;
+        for (int j=-2; j<=2; j++) {
+            for (int k=-2; k<=2; k++) {
+                vec2 offset = vec2(j,k) / pcf_step_size;
+                float closestDistance = texture(shadowSampler, vec3(shadow_uv+offset, i)).x;
+                if(closestDistance == light2PointDistance){
+                    num_ilum++;
+                }
+            }
+        }
+        float frac = float(num_ilum)/25.0;
+        intensity *= frac;
+        // record the fraction (out of 25) of shadow tests that are in shadow
+        // and attenuate illumination accordingly
 
 	    vec3 L = normalize(-spot_light_directions[i]);
 		vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
