@@ -18,8 +18,7 @@ uniform sampler2D diffuseTextureSampler;
 uniform sampler2D normalTextureSampler;
 // TODO CS248 Part 4: Environment Mapping
 uniform sampler2D environmentSampler;
-uniform sampler2D shadowSampler;
-
+uniform sampler2DArray shadowSampler;
 
 //
 // lighting environment definition. Scenes may contain directional
@@ -278,13 +277,16 @@ void main(void)
         // Render Shadows for all spot lights
         // TODO CS248 Part 5.2: Shadow Mapping: comute shadowing for spotlight i here 
         vec4 position_shadowlight = lightspace_position[i];
-        vec2 shadow_uv = position_shadowlight.xy / position_shadowlight.w;
-        float closestDistance = texture(shadowSampler, shadow_uv).r;
-        vec3 v = vec3(position_shadowlight.x, position_shadowlight.y, position_shadowlight.z);
-        float light2PointDistance = length(v)/ position_shadowlight.w;
-        // float light2PointDistance = position_shadowlight.z/ position_shadowlight.w;
-        if(closestDistance < light2PointDistance){
-            intensity *= 0.0;
+        vec3 lightspace3D = position_shadowlight.xyz / position_shadowlight.w;
+        vec2 shadow_uv = lightspace3D.xy;
+        float closestDistance = texture(shadowSampler, vec3(shadow_uv, i)).x;
+        float light2PointDistance = lightspace3D.z;
+        float bias = -0.0;
+        if(closestDistance + bias < light2PointDistance){
+            intensity *= 0.2;
+        }
+        else{
+            intensity *= 2.0;
         }
 
 
