@@ -262,9 +262,13 @@ void Scene::renderShadowPass(int shadowedLightIndex) {
     // TODO CS248 Part 5.2 Shadow Mapping
     // Here we render the shadow map for the given light. You need to accomplish the following:
     // (1) You need to use gl_mgr_->bindFrameBuffer on the correct framebuffer to render into.
+    auto fb_bind = gl_mgr_->bindFrameBuffer(shadowFrameBufferId_[shadowedLightIndex]);
     // (2) You need to compute the correct worldToLightNDC matrix to pass into drawShadow by
     //     pretending there is a camera at the light source looking at the scene. Some fake camera
     //     parameters are provided to you in the code above.
+    Matrix4x4 worldToLight = createWorldToCameraMatrix(lightPos, lightPos+lightDir, camera_->getUpDir());
+    Matrix4x4 proj = createPerspectiveMatrix(fovy, aspect, near, far);  
+    Matrix4x4 worldToLightNDC = proj * worldToLight;
     // (3) You need to compute a worldToShadowLight matrix that takes the point in world space and
     //     transforms it into "light space" for the fragment shader to use to sample from the shadow map.
     //     Note that this is almost worldToLightNDC with an additional transform that converts 
@@ -282,9 +286,12 @@ void Scene::renderShadowPass(int shadowedLightIndex) {
     //       auto fb_bind = gl_mgr_->bindFrameBuffer(100);
     //       drawTriangles();  //  <- Framebuffer 100 is bound, since fb_bind is still alive here.
     // 
-    // Replaces the following lines with correct implementation.
-    Matrix4x4 worldToLightNDC = Matrix4x4::identity();
-    worldToShadowLight_[shadowedLightIndex].zero();
+    Matrix4x4 skew = Matrix4x4::identity();
+    skew = skew * 0.5;
+    for(int r=0; r<4; r++){
+        skew[r][3] +=0.5;
+    }
+    worldToShadowLight_[shadowedLightIndex] = skew * worldToLightNDC;
 
     glViewport(0, 0, shadowTextureSize_, shadowTextureSize_);
 
