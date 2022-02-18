@@ -266,9 +266,8 @@ void Scene::renderShadowPass(int shadowedLightIndex) {
     // (2) You need to compute the correct worldToLightNDC matrix to pass into drawShadow by
     //     pretending there is a camera at the light source looking at the scene. Some fake camera
     //     parameters are provided to you in the code above.
-    Vector3D cameraUp(0,1,0);
-    if (cameraUp == lightDir){cameraUp = Vector3D(1,0,0);}
-    Matrix4x4 worldToLight = createWorldToCameraMatrix(lightPos, lightPos+lightDir, cameraUp/*camera_->getUpDir()*/);
+    Vector3D cameraUp = camera_->getUpDir();
+    Matrix4x4 worldToLight = createWorldToCameraMatrix(lightPos, lightPos+lightDir, cameraUp);
     Matrix4x4 proj = createPerspectiveMatrix(fovy, aspect, near, far);  
     Matrix4x4 worldToLightNDC = proj * worldToLight;
     // (3) You need to compute a worldToShadowLight matrix that takes the point in world space and
@@ -291,7 +290,7 @@ void Scene::renderShadowPass(int shadowedLightIndex) {
     Matrix4x4 skew = Matrix4x4::identity();
     skew = skew * 0.5;
     for(int r=0; r<3; r++){
-        skew[r][3] =0.5;
+        skew[3][r] =0.5;
     }
     skew[3][3] =1.;
     worldToShadowLight_[shadowedLightIndex] = skew * worldToLightNDC;
