@@ -280,16 +280,6 @@ void main(void)
         vec3 lightspace3D = position_shadowlight.xyz / position_shadowlight.w;
         vec2 shadow_uv = lightspace3D.xy;
         float light2PointDistance = lightspace3D.z;
-        // float closestDistance = texture(shadowSampler, vec3(shadow_uv, i)).x;
-        
-        // float light2PointDistance = lightspace3D.z;
-        // float bias = -0.0;
-        // if(closestDistance < light2PointDistance){
-        //     intensity *= 0.2;
-        // }
-        // else{
-        //     intensity *= 2.0;
-        // }
 
         float pcf_step_size = 256;
         int num_ilum = 0;
@@ -297,7 +287,7 @@ void main(void)
             for (int k=-2; k<=2; k++) {
                 vec2 offset = vec2(j,k) / pcf_step_size;
                 float closestDistance = texture(shadowSampler, vec3(shadow_uv+offset, i)).x;
-                if(closestDistance == light2PointDistance){
+                if(closestDistance >= light2PointDistance- 0.005){
                     num_ilum++;
                 }
             }
