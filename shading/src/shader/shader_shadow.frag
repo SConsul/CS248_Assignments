@@ -99,7 +99,7 @@ vec3 Phong_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color, vec3 specular_color,
 // Lommel Seeligger BRDF --
 // https://phys.libretexts.org/Bookshelves/Astronomy__Cosmology/Book%3A_Planetary_Photometry_(Tatum_and_Fairbairn)/03%3A_A_Brief_History_of_the_Lommel-Seeliger_Law/3.01%3A_A_Brief_History_of_the_Lommel-Seeliger_Law
 //
-// Evaluate phong reflectance model according to the given parameters
+// Evaluate  reflectance model according to the given parameters
 // L -- direction to light
 // V -- direction to camera (view direction)
 // N -- surface normal at point being shaded
@@ -115,6 +115,35 @@ vec3 LS_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color)
     float brdf = 1.2* u0 / ((u + u0)); // Proportionality constant changed for more pleasant image
 
     return brdf*diffuse_color;
+
+}
+
+//
+// Ward Seeligger BRDF --
+// https://www.graphics.cornell.edu/~bjw/wardnotes.pdf
+//
+// Evaluate phong reflectance model according to the given parameters
+// L -- direction to light
+// V -- direction to camera (view direction)
+// N -- surface normal at point being shaded
+//
+vec3 Ward_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color, vec3 specular_color)
+{
+    vec3 L_norm = normalize(L);
+    vec3 N_norm = normalize(N);
+    vec3 V_norm = normalize(V);
+    float diffused_comp = max(dot(L_norm,N_norm),0.0);
+    
+
+    const float rho_s = 1, alpha = 1, k = 0.3; // Assuming BRDF is isotropic: alpha_x = alpha_y
+    vec3 halfDir = normalize(L+V);
+    float cosThetaL = dot(L_norm, N_norm);
+    float cosThetaV = dot(V_norm, N_norm);
+    float cosThetaH = dot(halfDir, N_norm);
+    float tanSqThetaH = -1 + 1.0/(cosThetaH * cosThetaH);
+    float spec_comp = k* rho_s * pow(2.718, -1 * tanSqThetaH) / (alpha * alpha * sqrt(cosThetaL * cosThetaV));
+
+    return diffused_comp*diffuse_color+spec_comp*specular_color;
 
 }
 
