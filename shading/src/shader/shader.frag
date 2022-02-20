@@ -255,6 +255,8 @@ void main(void)
 	for (int i = 0; i < num_directional_lights; ++i) {
 	    vec3 L = normalize(-directional_light_vectors[i]);
 		vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
+        // vec3 brdf_color = LS_BRDF(L, V, N, diffuseColor);
+        // vec3 brdf_color = Ward_BRDF(L, V, N, diffuseColor, specular_color);
 	    Lo += light_magnitude * brdf_color;
     }
 
@@ -264,6 +266,8 @@ void main(void)
         vec3 L = normalize(light_vector);
         float distance = length(light_vector);
         vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
+        // vec3 brdf_color = LS_BRDF(L, V, N, diffuseColor);
+        // vec3 brdf_color = Ward_BRDF(L, V, N, diffuseColor, specular_color);
         float falloff = 1.0 / (0.01 + distance * distance);
         Lo += light_magnitude * falloff * brdf_color;
     }
