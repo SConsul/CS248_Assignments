@@ -119,10 +119,10 @@ vec3 LS_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color)
 }
 
 //
-// Ward Seeligger BRDF --
+// Ward BRDF --
 // https://www.graphics.cornell.edu/~bjw/wardnotes.pdf
 //
-// Evaluate phong reflectance model according to the given parameters
+// Evaluate  reflectance model according to the given parameters
 // L -- direction to light
 // V -- direction to camera (view direction)
 // N -- surface normal at point being shaded

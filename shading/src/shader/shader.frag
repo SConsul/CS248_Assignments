@@ -110,7 +110,7 @@ vec3 LS_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color)
 }
 
 //
-// Ward Seeligger BRDF --
+// Ward BRDF --
 // https://www.graphics.cornell.edu/~bjw/wardnotes.pdf
 //
 // Evaluate  reflectance model according to the given parameters
