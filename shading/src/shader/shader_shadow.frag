@@ -96,6 +96,47 @@ vec3 Phong_BRDF(vec3 L, vec3 V, vec3 N, vec3 diffuse_color, vec3 specular_color,
 }
 
 //
+// Blinn-Phong_BRDF --
+//
+// Evaluate phong reflectance model according to the given parameters
+// L -- direction to light
+// H -- direction of Halfway Vector
+// N -- surface normal at point being shaded
+//
+vec3 Blinn_Phong_BRDF(vec3 L, vec3 H, vec3 N, vec3 diffuse_color, vec3 specular_color, float specular_exponent)
+{
+    vec3 L_norm = normalize(L);
+    vec3 H_norm = normalize(L);
+    vec3 N_norm = normalize(N);
+    float diffused_comp = max(dot(L_norm,N_norm),0.0);
+    float spec_comp = pow(max(dot(N_norm,H_norm),0.0),specular_exponent);
+
+    return diffused_comp*diffuse_color+spec_comp*specular_color;
+}
+
+//
+// Oren Nayar BRDF --
+// http://www.cs.cmu.edu/afs/cs/academic/class/16823-s16/www/pdfs/appearance-modeling-5.pdf
+// Evaluate reflectance model according to the given parameters
+// L -- direction to light
+// V -- direction to camera (view direction)
+// N -- surface normal at point being shaded
+// roughness -- the std. deviation of the normals directions of the surfece facets
+vec3 Oren_Nayar_BRDF(vec3 L, vec3 V, vec3 N, float roughness, vec3 diffuse_color){
+    vec3 L_norm = normalize(L);
+    vec3 N_norm = normalize(N);
+    vec3 V_norm = normalize(V);
+    float cosI = dot(N_norm,L_norm), cosR = dot(N_norm,V_norm);
+
+    float sigma2 = roughness*roughness;
+    float A = 1 - 0.5*sigma2/(sigma2+0.33), B = 0.45*sigma2/(sigma2+0.09);
+    
+    float cosPhiSinAtanB = (dot(L_norm,V_norm) - cosI*cosR)/max(cosI,cosR);
+
+    return max(dot(L_norm,N_norm),0.0)*diffuse_color*(A+B*max(0.0,cosPhiSinAtanB));
+}
+
+//
 // Lommel Seeligger BRDF --
 // https://phys.libretexts.org/Bookshelves/Astronomy__Cosmology/Book%3A_Planetary_Photometry_(Tatum_and_Fairbairn)/03%3A_A_Brief_History_of_the_Lommel-Seeliger_Law/3.01%3A_A_Brief_History_of_the_Lommel-Seeliger_Law
 //
@@ -263,6 +304,19 @@ void main(void)
 	for (int i = 0; i < num_directional_lights; ++i) {
 	    vec3 L = normalize(-directional_light_vectors[i]);
 		vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
+        //Lommel Seeligger Reflectance
+        // vec3 brdf_color = LS_BRDF(L, V, N, diffuseColor);
+
+        //Ward BRDF
+        // vec3 brdf_color = Ward_BRDF(L, V, N, diffuseColor, specular_color);
+        
+        //Blinn-Phong Reflectance
+        // vec3 H = normalize(L+V);
+        // vec3 brdf_color = Blinn_Phong_BRDF(L, H, N, diffuseColor, specularColor, specularExponent);
+	    
+        //Oren-Nayar Reflectance
+        // float roughness=0.5;
+        // vec3 brdf_color = Oren_Nayar_BRDF(L, V, N, roughness, diffuseColor);
 	    Lo += light_magnitude * brdf_color;
     }
 
@@ -272,6 +326,19 @@ void main(void)
         vec3 L = normalize(light_vector);
         float distance = length(light_vector);
         vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
+        //Lommel Seeligger Reflectance
+        // vec3 brdf_color = LS_BRDF(L, V, N, diffuseColor);
+
+        //Ward BRDF
+        // vec3 brdf_color = Ward_BRDF(L, V, N, diffuseColor, specular_color);
+        
+        //Blinn-Phong Reflectance
+        // vec3 H = normalize(L+V);
+        // vec3 brdf_color = Blinn_Phong_BRDF(L, H, N, diffuseColor, specularColor, specularExponent);
+	    
+        //Oren-Nayar Reflectance
+        // float roughness=0.5;
+        // vec3 brdf_color = Oren_Nayar_BRDF(L, V, N, roughness, diffuseColor);
         float falloff = 1.0 / (0.01 + distance * distance);
         Lo += light_magnitude * falloff * brdf_color;
     }
@@ -351,7 +418,19 @@ void main(void)
 
 	    vec3 L = normalize(-spot_light_directions[i]);
 		vec3 brdf_color = Phong_BRDF(L, V, N, diffuseColor, specularColor, specularExponent);
+        //Lommel Seeligger Reflectance
+        // vec3 brdf_color = LS_BRDF(L, V, N, diffuseColor);
 
+        //Ward BRDF
+        // vec3 brdf_color = Ward_BRDF(L, V, N, diffuseColor, specular_color);
+        
+        //Blinn-Phong Reflectance
+        // vec3 H = normalize(L+V);
+        // vec3 brdf_color = Blinn_Phong_BRDF(L, H, N, diffuseColor, specularColor, specularExponent);
+	    
+        //Oren-Nayar Reflectance
+        // float roughness=0.5;
+        // vec3 brdf_color = Oren_Nayar_BRDF(L, V, N, roughness, diffuseColor);
 	    Lo += intensity * brdf_color;
     }
 
