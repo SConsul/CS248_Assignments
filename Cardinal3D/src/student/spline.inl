@@ -12,8 +12,12 @@ T Spline<T>::cubic_unit_spline(float time, const T& position0, const T& position
 
     // Note that Spline is parameterized on type T, which allows us to create splines over
     // any type that supports the * and + operators.
-
-    return T();
+    float t = time, t2 = time*time, t3 = time*time*time;
+    float h_00 = 2*t3-3*t2+1;
+    float h_10 = t3-2*t2+t;
+    float h_01 = -2*t3+3*t2;
+    float h_11 = t3-t2;
+    return h_00*position0 + h_10*tangent0 + h_01*position1 + h_11*tangent1;
 }
 
 template<typename T> T Spline<T>::at(float time) const {
