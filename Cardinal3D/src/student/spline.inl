@@ -27,10 +27,63 @@ template<typename T> T Spline<T>::at(float time) const {
     // Given a time, find the nearest positions & tangent values
     // defined by the control point map.
 
-    // Transform them for use with cubic_unit_spline
+    if(!this->any()){  // No control points
+        return T(); 
+    }
+    else if(this->control_points.size() == 1){  // Only one knot. Just return its value
+        return this->control_points.begin()->second;
+    }
+    else if(this->has(time)){  // Current time is a knot time
+        return this->control_points.at(time);
+    }
+    else if (time < this->control_points.begin()->first) {  // Current time is less than smallest knot time
+        return this->control_points.begin()->second;
+    }
+    else if (time > this->control_points.rbegin()->first) { // Current time is greater than largest knot time
+        return this->control_points.rbegin()->second;
+    }
+    else{
+        auto lowestGreaterThanTime = this->control_points.upper_bound(time);
+        auto greatestLowerThanTime = std::prev(lowestGreaterThanTime);
+        
+        float t[4];
+        t[1] = greatestLowerThanTime->first; 
+        t[2] = lowestGreaterThanTime->first;
+        T k[4];
+        k[1] = greatestLowerThanTime->second;
+        k[2] = lowestGreaterThanTime->second;
+
+        if(greatestLowerThanTime == this->control_points.begin()){ //  No t0 exists. Mirroring
+            t[0] = t[1] - (t[2] - t[1]);
+            k[0] = k[1] - (k[2] - k[1]); 
+        }
+        else{
+            t[0] = std::prev(greatestLowerThanTime)->first;
+            k[0] = std::prev(greatestLowerThanTime)->second;
+        }
+
+        if(lowestGreaterThanTime == std::prev(this->control_points.end())){ //  No t3 exists. Mirroring
+            t[3] = t[2] + (t[2] - t[1]);
+            k[3] = k[2] + (k[2] - k[1]);
+        }  
+        else{
+            t[3] = std::next(lowestGreaterThanTime)->first;
+            k[3] = std::next(lowestGreaterThanTime)->second;
+        }
+
+        // Transform them for use with cubic_unit_spline
+        float offset = t[0], normFactor = t[3]-t[0]; // Convert times to lie between 0 and 1
+        for (size_t i = 0; i < sizeof(t) / sizeof(t[0]); i++) {
+            t[i] = (t[i] - offset) / normFactor;
+        }
+        float timeNorm = (time - offset) / normFactor;
+
+        T tangent1 = (k[2] - k[0]) / (t[2] - t[0]);
+        T tangent2 = (k[3] - k[1]) / (t[3] - t[1]);
+
+        return cubic_unit_spline(timeNorm, k[1], k[2], tangent1, tangent2);
+    }
 
     // Be wary of edge cases! What if time is before the first knot,
     // before the second knot, etc...
-
-    return cubic_unit_spline(0.0f, T(), T(), T(), T());
 }
