@@ -72,7 +72,7 @@ template<typename T> T Spline<T>::at(float time) const {
         }
 
         // Transform them for use with cubic_unit_spline
-        float offset = t[0], normFactor = t[3]-t[0]; // Convert times to lie between 0 and 1
+        float offset = t[1], normFactor = t[2]-t[1]; // Convert times to lie between 0 and 1
         for (size_t i = 0; i < sizeof(t) / sizeof(t[0]); i++) {
             t[i] = (t[i] - offset) / normFactor;
         }
