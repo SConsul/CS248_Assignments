@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<COLLADA xmlns="http://www.collada.org/2005/11/COLLADASchema" version="1.4.1">
+  <asset>
+    <contributor>
+      <author>Assimp</author>
+      <authoring_tool>Assimp Exporter</authoring_tool>
+    </contributor>
+    <created>2022-02-26T18:51:26</created>
+    <modified>2022-02-26T18:51:26</modified>
+    <unit name="meter" meter="1" />
+    <up_axis>Y_UP</up_axis>
+  </asset>
+  <library_cameras>
+    <camera id="S3D-RENDER_CAM_NODE-camera" name="S3D-RENDER_CAM_NODE" >
+      <optics>
+        <technique_common>
+          <perspective>
+            <xfov sid="xfov">121.28449</xfov>
+            <aspect_ratio>1.7777778</aspect_ratio>
+            <znear sid="znear">0</znear>
+            <zfar sid="zfar">1</zfar>
+          </perspective>
+        </technique_common>
+      </optics>
+    </camera>
+    <camera id="S3D-ANIM_CAM_NODE-camera" name="S3D-ANIM_CAM_NODE" >
+      <optics>
+        <technique_common>
+          <perspective>
+            <xfov sid="xfov">121.28449</xfov>
+            <aspect_ratio>1.7777778</aspect_ratio>
+            <znear sid="znear">0</znear>
+            <zfar sid="zfar">1</zfar>
+          </perspective>
+        </technique_common>
+      </optics>
+    </camera>
+  </library_cameras>
+  <library_images>
+  </library_images>
+  <library_effects>
+    <effect id="lambertian-fx" name="lambertian">
+      <profile_COMMON>
+        <technique sid="standard">
+          <phong>
+            <emission>
+              <color sid="emission">1   1   1   1</color>
+            </emission>
+            <diffuse>
+              <color sid="diffuse">1   1   1   1</color>
+            </diffuse>
+            <shininess>
+              <float sid="shininess">1</float>
+            </shininess>
+            <reflective>
+              <color sid="reflective">1   1   1   1</color>
+            </reflective>
+            <transparent>
+              <color sid="transparent">1   1   1   1</color>
+            </transparent>
+            <index_of_refraction>
+              <float sid="index_of_refraction">1.2</float>
+            </index_of_refraction>
+          </phong>
+        </technique>
+      </profile_COMMON>
+    </effect>
+  </library_effects>
+  <library_materials>
+    <material id="lambertian" name="lambertian">
+      <instance_effect url="#lambertian-fx"/>
+    </material>
+  </library_materials>
+  <library_geometries>
+    <geometry id="Cube-S3D-13-FLIPPED_1" name="Cube-S3D-13-FLIPPED" >
+      <mesh>
+        <source id="Cube-S3D-13-FLIPPED_1-positions" name="Cube-S3D-13-FLIPPED_1-positions">
+          <float_array id="Cube-S3D-13-FLIPPED_1-positions-array" count="24"> -0.5 -0.5 -0.5 0.5 -0.5 -0.5 -0.5 0.5 -0.5 0.5 0.5 -0.5 0.5 -0.5 0.5 0.5 0.5 0.5 -0.5 -0.5 0.5 -0.5 0.5 0.5 </float_array>
+          <technique_common>
+            <accessor count="8" offset="0" source="#Cube-S3D-13-FLIPPED_1-positions-array" stride="3">
+              <param name="X" type="float" />
+              <param name="Y" type="float" />
+              <param name="Z" type="float" />
+            </accessor>
+          </technique_common>
+        </source>
+        <vertices id="Cube-S3D-13-FLIPPED_1-vertices">
+          <input semantic="POSITION" source="#Cube-S3D-13-FLIPPED_1-positions" />
+        </vertices>
+        <polylist count="12" material="defaultMaterial">
+          <input offset="0" semantic="VERTEX" source="#Cube-S3D-13-FLIPPED_1-vertices" />
+          <vcount>3 3 3 3 3 3 3 3 3 3 3 3 </vcount>
+          <p>2 0 1 3 2 1 3 1 4 5 3 4 5 4 6 7 5 6 7 6 0 2 7 0 7 2 3 5 7 3 0 6 4 1 0 4 </p>
+        </polylist>
+      </mesh>
+    </geometry>
+  </library_geometries>
+  <library_controllers>
+    <controller id="Cube-S3D-13-FLIPPED_1-skin" name="skinCluster0">
+      <skin source="#Cube-S3D-13-FLIPPED_1">
+        <bind_shape_matrix>
+          1 0 0 0
+          0 1 0 0
+          0 0 1 0
+          0 0 0 1
+        </bind_shape_matrix>
+        <source id="Cube-S3D-13-FLIPPED_1-skin-joints" name="Cube-S3D-13-FLIPPED-skin-joints">
+          <Name_array id="Cube-S3D-13-FLIPPED_1-skin-joints-array" count="7">S3D-JOINT-13-17 S3D-JOINT-13-18 S3D-JOINT-13-19 S3D-JOINT-13-20 S3D-JOINT-13-21 S3D-JOINT-13-15 S3D-JOINT-13-16 </Name_array>
+          <technique_common>
+            <accessor source="#Cube-S3D-13-FLIPPED_1-skin-joints-array" count="7" stride="1">
+              <param name="JOINT" type="Name"></param>
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Cube-S3D-13-FLIPPED_1-skin-bind_poses" name="Cube-S3D-13-FLIPPED_1-skin-bind_poses">
+          <float_array id="Cube-S3D-13-FLIPPED_1-skin-bind_poses-array" count="112"> 1 0 0 0 0 1 0 0.72425663 0 0 1 0 0 0 0 1 1 0 0 0.63352656 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0 1 0 0.70039308 0 0 1 0 0 0 0 1 1 0 0 0.73093522 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0 1 0 0 0 0 1 0.93888569 0 0 0 1 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 </float_array>
+          <technique_common>
+            <accessor count="7" offset="0" source="#Cube-S3D-13-FLIPPED_1-skin-bind_poses-array" stride="16">
+              <param name="TRANSFORM" type="float4x4" />
+            </accessor>
+          </technique_common>
+        </source>
+        <source id="Cube-S3D-13-FLIPPED_1-skin-weights" name="Cube-S3D-13-FLIPPED_1-skin-weights">
+          <float_array id="Cube-S3D-13-FLIPPED_1-skin-weights-array" count="7"> 0.25 0.25 0.25 0.25 0.25 0.25 0.25 </float_array>
+          <technique_common>
+            <accessor count="7" offset="0" source="#Cube-S3D-13-FLIPPED_1-skin-weights-array" stride="1">
+              <param name="WEIGHT" type="float" />
+            </accessor>
+          </technique_common>
+        </source>
+        <joints>
+          <input semantic="JOINT" source="#Cube-S3D-13-FLIPPED_1-skin-joints"></input>
+          <input semantic="INV_BIND_MATRIX" source="#Cube-S3D-13-FLIPPED_1-skin-bind_poses"></input>
+        </joints>
+        <vertex_weights count="8">
+          <input semantic="JOINT" source="#Cube-S3D-13-FLIPPED_1-skin-joints" offset="0"></input>
+          <input semantic="WEIGHT" source="#Cube-S3D-13-FLIPPED_1-skin-weights" offset="1"></input>
+          <vcount>7 0 0 0 0 0 0 0 </vcount>
+          <v>0 0 1 1 2 2 3 3 4 4 5 5 6 6 </v>
+        </vertex_weights>
+      </skin>
+    </controller>
+  </library_controllers>
+  <library_visual_scenes>
+    <visual_scene id="node" name="">
+      <node id="Cube-S3D-13-FLIPPED" name="Cube-S3D-13-FLIPPED" type="NODE">
+        <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <instance_controller url="#Cube-S3D-13-FLIPPED_1-skin">
+          <skeleton>#S3D-JOINT-13-ARMATURE</skeleton>
+          <bind_material>
+            <technique_common>
+              <instance_material symbol="defaultMaterial" target="#lambertian">
+              </instance_material>
+            </technique_common>
+          </bind_material>
+        </instance_controller>
+      </node>
+      <node id="S3D-JOINT-13-ARMATURE" name="S3D-JOINT-13-ARMATURE" type="NODE">
+        <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+        <node id="S3D-JOINT-13-17" sid="S3D-JOINT-13-17" name="S3D-JOINT-13-17" type="JOINT">
+          <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <node id="S3D-JOINT-13-18" sid="S3D-JOINT-13-18" name="S3D-JOINT-13-18" type="JOINT">
+            <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+            <node id="S3D-JOINT-13-19" sid="S3D-JOINT-13-19" name="S3D-JOINT-13-19" type="JOINT">
+              <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+              <node id="S3D-JOINT-13-20" sid="S3D-JOINT-13-20" name="S3D-JOINT-13-20" type="JOINT">
+                <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+                <node id="S3D-JOINT-13-21" sid="S3D-JOINT-13-21" name="S3D-JOINT-13-21" type="JOINT">
+                  <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+                </node>
+              </node>
+            </node>
+          </node>
+        </node>
+        <node id="S3D-JOINT-13-15" sid="S3D-JOINT-13-15" name="S3D-JOINT-13-15" type="JOINT">
+          <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          <node id="S3D-JOINT-13-16" sid="S3D-JOINT-13-16" name="S3D-JOINT-13-16" type="JOINT">
+            <matrix sid="matrix">1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1</matrix>
+          </node>
+        </node>
+      </node>
+      <node id="S3D-ANIM_CAM_NODE" name="S3D-ANIM_CAM_NODE" type="NODE">
+        <matrix sid="matrix">0.70710677 -0.50000006 0.5 2.5 0 0.70710677 0.70710683 3.5355344 -0.70710683 -0.5 0.49999997 2.4999998 0 0 0 1</matrix>
+        <instance_camera url="#S3D-ANIM_CAM_NODE-camera"/>
+      </node>
+      <node id="S3D-RENDER_CAM_NODE" name="S3D-RENDER_CAM_NODE" type="NODE">
+        <matrix sid="matrix">0.70710677 -0.50000006 0.5 2.5 0 0.70710677 0.70710683 3.5355344 -0.70710683 -0.5 0.49999997 2.4999998 0 0 0 1</matrix>
+        <instance_camera url="#S3D-RENDER_CAM_NODE-camera"/>
+      </node>
+    </visual_scene>
+  </library_visual_scenes>
+  <library_animations>
+  </library_animations>
+  <scene>
+    <instance_visual_scene url="#node" />
+  </scene>
+</COLLADA>
