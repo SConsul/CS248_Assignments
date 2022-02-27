@@ -5,10 +5,11 @@ Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
 
     // TODO(Animation): Task 3
     // Return the closest point to 'point' on the line segment from start to end
-    if((point-start).norm()<=(point-end).norm()){
-        return start;
-    }
-    return end;
+    // if((point-start).norm()<=(point-end).norm()){
+    //     return start;
+    // }
+    // return end;
+    return Vec3();
 }
 
 Mat4 Joint::joint_to_bind() const {
@@ -23,12 +24,11 @@ Mat4 Joint::joint_to_bind() const {
     // You will need to traverse the joint heirarchy. This should
     // not take into account Skeleton::base_pos
     // return Mat4::I;
-    if(this->parent == nullptr){
-        return Mat4::I;
+    Mat4 T = Mat4::I;
+    for (Joint* j=this->parent; j!=nullptr; j=j->parent){
+        T = Mat4::translate(j->extent)*T;
     }
-    Mat4 Parent2Bind = Mat4::I;
-    Parent2Bind.translate(this->parent->extent);
-    return this->parent->joint_to_bind()*Parent2Bind;
+    return T;
 
 }
 
@@ -41,13 +41,12 @@ Mat4 Joint::joint_to_posed() const {
 
     // You will need to traverse the joint heirarchy. This should
     // not take into account Skeleton::base_pos
-    if(this->parent == nullptr){
-        return Mat4::I;
+    Mat4 T = Mat4::euler(this->pose);
+    for (Joint* j=this->parent; j!=nullptr; j=j->parent){
+        T = Mat4::translate(j->extent)*T;
+        T = Mat4::euler(j->pose)*T;
     }
-    Mat4 Rot = Mat4::euler(this->pose);
-    Mat4 Parent2Posed = Mat4::I;
-    Parent2Posed.translate(this->parent->extent);
-    return this->parent->joint_to_posed()*Parent2Posed*Rot;
+    return T;
 }
 
 Vec3 Skeleton::end_of(Joint* j) {
@@ -56,7 +55,7 @@ Vec3 Skeleton::end_of(Joint* j) {
 
     // Return the bind position of the endpoint of joint j in object space.
     // This should take into account Skeleton::base_pos.
-    return j->joint_to_bind()*j->extent;
+    return j->joint_to_bind()*j->extent + this->base_pos;
 }
 
 Vec3 Skeleton::posed_end_of(Joint* j) {
@@ -65,7 +64,7 @@ Vec3 Skeleton::posed_end_of(Joint* j) {
 
     // Return the posed position of the endpoint of joint j in object space.
     // This should take into account Skeleton::base_pos.
-    return j->joint_to_posed()*j->extent;
+    return j->joint_to_posed()*j->extent + this->base_pos;
 }
 
 Mat4 Skeleton::joint_to_bind(const Joint* j) const {
@@ -74,10 +73,14 @@ Mat4 Skeleton::joint_to_bind(const Joint* j) const {
 
     // Return a matrix transforming points in joint j's space to object space in
     // bind position. This should take into account Skeleton::base_pos.
-    Mat4 joint2Bind = j->joint_to_bind();
-    Mat4 eye = Mat4::I;
-    joint2Bind*eye.translate(this->base_pos);
-    return joint2Bind;
+    Mat4 T = Mat4::I;
+    for (Joint* i=j->parent; i!=nullptr; i=i->parent){
+        T = Mat4::translate(i->extent)*T;
+        T = Mat4::euler(i->pose)*T;
+    }
+
+    T = Mat4::translate(this->base_pos) * T;
+    return T;
 }
 
 Mat4 Skeleton::joint_to_posed(const Joint* j) const {
@@ -86,10 +89,13 @@ Mat4 Skeleton::joint_to_posed(const Joint* j) const {
 
     // Return a matrix transforming points in joint j's space to object space with
     // poses. This should take into account Skeleton::base_pos.
-    Mat4 joint2Pose = j->joint_to_posed();
-    Mat4 eye = Mat4::I;
-    joint2Pose*eye.translate(this->base_pos);
-    return joint2Pose;
+    Mat4 T = Mat4::I;
+    for (Joint* i=j->parent; i!=nullptr; i=i->parent){
+        T = Mat4::translate(i->extent)*T;
+    }
+
+    T = Mat4::translate(this->base_pos) * T;
+    return T;
 }
 
 void Skeleton::find_joints(const GL::Mesh& mesh,
@@ -144,6 +150,8 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
 
     // Target is the position of the IK handle in skeleton space.
     // Current is the end position of the IK'd joint in skeleton space.
+    // float lr = 1e-3;
+    // this->angle_gradient = lr*Jacob_T*(current-target);
 }
 
 void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
