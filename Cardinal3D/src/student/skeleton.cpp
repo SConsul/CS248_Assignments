@@ -130,6 +130,8 @@ void Skeleton::find_joints(const GL::Mesh& mesh,
     });
 }
 
+bool isMapPopulated = false;
+std::map<Joint*, Mat4> jointToJ2bInv;
 void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
                     const std::unordered_map<unsigned int, std::vector<Joint*>>& map) {
 
@@ -142,6 +144,13 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
 
     // Currently, this just copies the input to the output without modification.
 
+    if(!isMapPopulated){
+        for_joints([&](Joint* j) {
+            jointToJ2bInv[j] = j->joint_to_bind().inverse();
+        });
+        isMapPopulated = true;
+    }
+
     std::vector<GL::Mesh::Vert> verts = input.verts();
     for(size_t i = 0; i < verts.size(); i++) {
         // Skin vertex i. Note that its position is given in object bind space.
@@ -152,7 +161,7 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
             Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos /*+ this->base_pos*/);
             float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos /*+ this->base_pos*/)).norm());
 
-            Vec3 v_ij = (j->joint_to_posed() * j->joint_to_bind().inverse() * (verts[i].pos - this->base_pos)) + this->base_pos;
+            Vec3 v_ij = (j->joint_to_posed() * jointToJ2bInv[j] * (verts[i].pos - this->base_pos)) + this->base_pos;
             
             num+= v_ij * dist_ij_inv;
             den+= dist_ij_inv;
