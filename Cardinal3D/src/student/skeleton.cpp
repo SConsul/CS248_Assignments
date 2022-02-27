@@ -1,6 +1,6 @@
 
 #include "../scene/skeleton.h"
-
+#include<iostream>
 Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
 
     // TODO(Animation): Task 3
@@ -150,13 +150,56 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
 
     // Target is the position of the IK handle in skeleton space.
     // Current is the end position of the IK'd joint in skeleton space.
-    // float lr = 1e-3;
-    // this->angle_gradient = lr*Jacob_T*(current-target);
+
+    std::vector<Joint*> hier;
+    for (Joint* j=this->parent; j!=nullptr; j=j->parent){
+        hier.push_back(j);
+    }
+
+    Vec3 delta = current-target;
+    Mat4 T = this->joint_to_posed();
+    for(auto iter=hier.rbegin(); iter!=hier.rend(); iter++){
+        Joint* j = *iter;
+        Vec3 base = Vec3(); //base of point is origin in that joint space
+        Vec3 p = current -  j->joint_to_posed()*base;
+
+        Vec4 X_axis_h = T*Vec4(1,0,0,0);
+        Vec3 X_axis = Vec3(X_axis_h.x, X_axis_h.y, X_axis_h.z).normalize();
+        j->angle_gradient.x += dot(delta,cross(X_axis,p));
+
+        Vec4 Y_axis_h = T*Vec4(0,1,0,0);
+        Vec3 Y_axis = Vec3(Y_axis_h.x, Y_axis_h.y, Y_axis_h.z).normalize();
+        j->angle_gradient.y += dot(delta,cross(Y_axis,p));
+
+        Vec4 Z_axis_h = T*Vec4(0,0,1,0);
+        Vec3 Z_axis = Vec3(Z_axis_h.x, Z_axis_h.y, Z_axis_h.z).normalize();
+        j->angle_gradient.z += dot(delta,cross(Z_axis,p));
+
+        T = T*Mat4::euler(j->pose)*Mat4::translate(j->extent);
+    }
+
 }
 
 void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
 
     // TODO(Animation): Task 2
-
     // Do several iterations of Jacobian Transpose gradient descent for IK
+    for(int iter = 0; iter<100  ; iter++){
+        //zero_grad()
+        for(auto handle: active_handles){
+            handle->joint->angle_gradient = Vec3();
+        }
+
+        //compute gradient
+        for(auto handle: active_handles){
+            handle->joint->compute_gradient(handle->target, posed_end_of(handle->joint));
+        }
+
+        //step
+        float lr = 10;
+        for(auto handle: active_handles){
+            handle->joint->pose -= lr*handle->joint->angle_gradient;
+        }
+        std::cout<<"Step: "<<iter<<std::endl;
+    }
 }
