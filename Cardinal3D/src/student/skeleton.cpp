@@ -5,11 +5,17 @@ Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
 
     // TODO(Animation): Task 3
     // Return the closest point to 'point' on the line segment from start to end
-    // if((point-start).norm()<=(point-end).norm()){
-    //     return start;
-    // }
-    // return end;
-    return Vec3();
+    
+    Vec3 s2e = end - start, s2p = point - start;
+    float length = s2e.norm();
+    Vec3 s2eNorm = s2e.normalize();
+    
+    float projection = dot(s2p, s2eNorm);
+    if(projection >= length){return end;}
+    else if(projection <= 0){return start;}
+    else{
+        return projection * s2eNorm + start;
+    }
 }
 
 Mat4 Joint::joint_to_bind() const {
