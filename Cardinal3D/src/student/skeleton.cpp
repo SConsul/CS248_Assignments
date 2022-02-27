@@ -114,13 +114,19 @@ void Skeleton::find_joints(const GL::Mesh& mesh,
     // if it is within Joint::radius distance of the bone's line segment in bind position.
 
     const std::vector<GL::Mesh::Vert>& verts = mesh.verts();
-    (void)verts;
 
     // For each i in [0, verts.size()), map[i] should contain the list of joints that
     // effect vertex i. Note that i is NOT Vert::id! i is the index in verts.
 
     for_joints([&](Joint* j) {
         // What vertices does joint j effect?
+        for(size_t i=0; i< verts.size(); i++){
+            Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos /*+ this->base_pos*/);
+            float distance = (closestPoint - verts[i].pos).norm();
+            if(distance < j->radius){
+                map[i].push_back(j);
+            }
+        }
     });
 }
 
@@ -138,8 +144,21 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
 
     std::vector<GL::Mesh::Vert> verts = input.verts();
     for(size_t i = 0; i < verts.size(); i++) {
-
         // Skin vertex i. Note that its position is given in object bind space.
+        if(map.count(i) <= 0){continue;}
+        Vec3 num;
+        float den = 0.0;
+        for(Joint* j : map.at(i)){
+            Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos /*+ this->base_pos*/);
+            float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos /*+ this->base_pos*/)).norm());
+
+            Vec3 v_ij = (j->joint_to_posed() * j->joint_to_bind().inverse() * (verts[i].pos - this->base_pos)) + this->base_pos;
+            
+            num+= v_ij * dist_ij_inv;
+            den+= dist_ij_inv;
+        }
+        verts[i].pos = num/den;
+        
     }
 
     std::vector<GL::Mesh::Index> idxs = input.indices();
@@ -163,7 +182,6 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
     }
 
     Vec3 delta = current-target;
-    // std::cout<<"curr="<<current<<" j_end="<<this->xend_of()<<std::endl;
     for(auto iter=hier.rbegin(); iter!=hier.rend(); iter++){
         Joint* j = *iter;
         Mat4 T = j->joint_to_posed();
@@ -181,14 +199,11 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
         Vec4 Z_axis_h = T*Vec4(0,0,1,0);
         Vec3 Z_axis = Vec3(Z_axis_h.x, Z_axis_h.y, Z_axis_h.z).normalize();
         j->angle_gradient.z += dot(delta,cross(Z_axis,p));
-
-        // T = T*Mat4::euler(j->pose)*Mat4::translate(j->extent);
     }
 
 }
 
 void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
-    std::cout<<"========================="<<std::endl;
     // TODO(Animation): Task 2
     // Do several iterations of Jacobian Transpose gradient descent for IK
     for(int iter = 0; iter<5  ; iter++){
@@ -197,16 +212,11 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
 
         //compute gradient
         for(auto handle: active_handles){
-            // handle->joint->compute_gradient(handle->target, handle->joint->joint_to_posed()*handle->joint->extent);
             handle->joint->compute_gradient(handle->target, posed_end_of(handle->joint)- this->base_pos);
         }
             
         //step
         float lr = 0.2;
         for_joints([&](Joint* j){j->pose -=lr*j->angle_gradient;});
-        // for(auto handle: active_handles){
-        //     handle->joint->pose -= lr*handle->joint->angle_gradient;
-        // }
-        
     }
 }
