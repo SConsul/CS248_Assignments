@@ -237,12 +237,15 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
         this->skeletonType = (numJoints >= 3);
         assert(this->skeletonType != -1);
         this->base_pos_orig = base_pos;
+        if(this->skeletonType == 0){
+            this->base_acc = this->gravityAcc;
+        }
     }
 
     switch(this->skeletonType){
         case 0:{ // numJoints < 3
-            const Vec3 velocity = Vec3(0.0f,0.0f,0.01f);
-            this->base_pos += velocity;
+            this->base_pos += this->base_vel + this->base_acc/2;
+            this->base_vel += this->base_acc;
             break;
         }
 

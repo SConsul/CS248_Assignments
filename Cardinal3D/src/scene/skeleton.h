@@ -168,7 +168,8 @@ public:
     int skeletonType = -1;
 
 private:
-    Vec3 base_pos, base_pos_orig;
+    Vec3 gravityAcc = Vec3(0.0f, -0.01f, 0.0f);
+    Vec3 base_pos, base_pos_orig, base_vel = Vec3(0.0f, 0.0f, 0.0f), base_acc = Vec3(0.0f, 0.0f, 0.0f);
     unsigned int root_id, next_id;
     std::unordered_set<Joint*> roots;
     std::unordered_map<Joint*, std::vector<IK_Handle*>> erased;
