@@ -28,6 +28,7 @@ void Joint::for_joints(std::function<void(Joint*)> func) {
 }
 
 Skeleton::Skeleton() {
+    skeletonType = -1;
     root_id = Gui::n_Widget_IDs;
     next_id = Gui::n_Widget_IDs + 1;
 }

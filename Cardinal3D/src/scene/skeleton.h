@@ -165,8 +165,10 @@ public:
     SSave splines();
     void restore_splines(const SSave& data);
 
+    int skeletonType = -1;
+
 private:
-    Vec3 base_pos;
+    Vec3 base_pos, base_pos_orig;
     unsigned int root_id, next_id;
     std::unordered_set<Joint*> roots;
     std::unordered_map<Joint*, std::vector<IK_Handle*>> erased;

@@ -123,9 +123,24 @@ void Skeleton::find_joints(const GL::Mesh& mesh,
         for(size_t i=0; i< verts.size(); i++){
             Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos /*+ this->base_pos*/);
             float distance = (closestPoint - verts[i].pos).norm();
-            if(distance < j->radius){
+
+            switch (this->skeletonType)
+            {
+            case 0: {
+                // numJoints < 3
                 map[i].push_back(j);
+                break;
             }
+
+            case 1:{
+                if(distance < j->radius){
+                    map[i].push_back(j);
+                }
+            }
+            
+            default:
+                break;
+            } 
         }
     });
 }
@@ -158,15 +173,15 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         Vec3 num;
         float den = 0.0;
         for(Joint* j : map.at(i)){
-            Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos /*+ this->base_pos*/);
-            float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos /*+ this->base_pos*/)).norm());
-
-            Vec3 v_ij = (j->joint_to_posed() * jointToJ2bInv[j] * (verts[i].pos - this->base_pos)) + this->base_pos;
+            Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos);
+            float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos)).norm());
+            
+            Vec3 v_ij = (j->joint_to_posed() * jointToJ2bInv[j] * (verts[i].pos - this->base_pos_orig));
             
             num+= v_ij * dist_ij_inv;
             den+= dist_ij_inv;
         }
-        verts[i].pos = num/den;
+        verts[i].pos = num/den + this->base_pos;
         
     }
 
@@ -215,17 +230,42 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
 void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
     // TODO(Animation): Task 2
     // Do several iterations of Jacobian Transpose gradient descent for IK
-    for(int iter = 0; iter<5  ; iter++){
-        //zero_grad()
-        for_joints([&](Joint* j){j->angle_gradient = Vec3();});
 
-        //compute gradient
-        for(auto handle: active_handles){
-            handle->joint->compute_gradient(handle->target, posed_end_of(handle->joint)- this->base_pos);
-        }
-            
-        //step
-        float lr = 0.2;
-        for_joints([&](Joint* j){j->pose -=lr*j->angle_gradient;});
+    if(this->skeletonType == -1){
+        int numJoints = 0;
+        for_joints([&](Joint* j){numJoints++;});
+        this->skeletonType = (numJoints >= 3);
+        assert(this->skeletonType != -1);
+        this->base_pos_orig = base_pos;
     }
+
+    switch(this->skeletonType){
+        case 0:{ // numJoints < 3
+            const Vec3 velocity = Vec3(0.0f,0.0f,0.01f);
+            this->base_pos += velocity;
+            break;
+        }
+
+        case 1:{
+            for(int iter = 0; iter<5  ; iter++){
+                //zero_grad()
+                for_joints([&](Joint* j){j->angle_gradient = Vec3();});
+
+                //compute gradient
+                for(auto handle: active_handles){
+                    handle->joint->compute_gradient(handle->target, posed_end_of(handle->joint)- this->base_pos);
+                }
+                    
+                //step
+                float lr = 0.2;
+                for_joints([&](Joint* j){j->pose -=lr*j->angle_gradient;});
+            }
+            break;
+        }
+
+        default:{
+            break;
+        }
+    }
+    
 }
