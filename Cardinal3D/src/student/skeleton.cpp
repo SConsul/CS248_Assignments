@@ -1,6 +1,10 @@
 
 #include "../scene/skeleton.h"
 #include<iostream>
+
+const float groundY = -3;
+
+
 Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
 
     // TODO(Animation): Task 3
@@ -167,11 +171,14 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
     }
 
     std::vector<GL::Mesh::Vert> verts = input.verts();
+    float lowestVertY = std::numeric_limits<float>::infinity();
     for(size_t i = 0; i < verts.size(); i++) {
         // Skin vertex i. Note that its position is given in object bind space.
+        // std::cout << "skin-1" << std::endl;
         if(map.count(i) <= 0){continue;}
         Vec3 num;
         float den = 0.0;
+        // std::cout << "skin0" << std::endl;
         for(Joint* j : map.at(i)){
             Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos);
             float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos)).norm());
@@ -183,6 +190,21 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         }
         verts[i].pos = num/den + this->base_pos;
         
+        lowestVertY = std::min(lowestVertY, verts[i].pos.y);
+
+    }
+
+    if(lowestVertY < groundY){
+        this->base_pos.y += (groundY - lowestVertY);
+        for(size_t i = 0; i < verts.size(); i++) {
+            verts[i].pos.y += groundY - lowestVertY;
+        }
+        if(std::abs(this->base_vel.y) < 0.05){
+            this->base_vel.y = 0;
+        }
+        else{
+            this->base_vel.y *= -this->coeffRestitution;
+        }
     }
 
     std::vector<GL::Mesh::Index> idxs = input.indices();
@@ -245,6 +267,7 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
     switch(this->skeletonType){
         case 0:{ // numJoints < 3
             this->base_pos += this->base_vel + this->base_acc/2;
+            this->base_pos.y = std::max(this->base_pos.y, groundY);
             this->base_vel += this->base_acc;
             break;
         }
