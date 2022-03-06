@@ -35,7 +35,59 @@ struct Quat {
         z = src.z;
         w = src.w;
     }
+    explicit Quat(const Mat4& mat){
+        // Compute trace of matrix 'mat'
+        float T = 1 + mat[0][0] + mat[1][1] + mat[2][2];
 
+        float S, X, Y, Z, W;
+
+        if ( T > 0.00000001f ) // to avoid large distortions!
+        {
+            S = sqrt(T) * 2.f;
+            X = ( mat[1][2] - mat[2][1] ) / S;
+            Y = ( mat[2][0] - mat[0][2] ) / S;
+            Z = ( mat[0][1] - mat[1][0] ) / S;
+            W = 0.25f * S;
+        }
+        else
+        {
+            if ( mat[0][0] > mat[1][1] && mat[0][0] > mat[2][2] )
+            {
+                // Column 0 :
+                S  = sqrt( 1.0f + mat[0][0] - mat[1][1] - mat[2][2] ) * 2.f;
+                X = 0.25f * S;
+                Y = (mat[0][1] + mat[1][0] ) / S;
+                Z = (mat[2][0] + mat[0][2] ) / S;
+                W = (mat[1][2] - mat[2][1] ) / S;
+            }
+            else if ( mat[1][1] > mat[2][2] )
+            {
+                // Column 1 :
+                S  = sqrt( 1.0f + mat[1][1] - mat[0][0] - mat[2][2] ) * 2.f;
+                X = (mat[0][1] + mat[1][0] ) / S;
+                Y = 0.25f * S;
+                Z = (mat[1][2] + mat[2][1] ) / S;
+                W = (mat[2][0] - mat[0][2] ) / S;
+            }
+            else
+            {   // Column 2 :
+                S  = sqrt( 1.0f + mat[2][2] - mat[0][0] - mat[1][1] ) * 2.f;
+                X = (mat[2][0] + mat[0][2] ) / S;
+                Y = (mat[1][2] + mat[2][1] ) / S;
+                Z = 0.25f * S;
+                W = (mat[0][1] - mat[1][0] ) / S;
+            }
+        }
+
+        w = W; x = -X; y = -Y; z = -Z;
+    }
+    
+    explicit Quat(const Quat& q, const Vec3& t){
+        w = -0.5f*( t.x * q.x + t.y * q.y + t.z * q.z);
+        x =  0.5f*( t.x * q.w + t.y * q.z - t.z * q.y);
+        y =  0.5f*(-t.x * q.z + t.y * q.w + t.z * q.x);
+        z =  0.5f*( t.x * q.y - t.y * q.x + t.z * q.w);
+    }
     Quat(const Quat&) = default;
     Quat& operator=(const Quat&) = default;
     ~Quat() = default;

@@ -116,7 +116,7 @@ const Halfedge_Mesh& Scene_Object::get_mesh() const {
 
 void Scene_Object::sync_anim_mesh() {
     sync_mesh();
-    if(skel_dirty && armature.has_bones()) {
+    if(/*skel_dirty && */armature.has_bones()) {
         vertex_joints.clear();
         armature.find_joints(_mesh, vertex_joints);
     }

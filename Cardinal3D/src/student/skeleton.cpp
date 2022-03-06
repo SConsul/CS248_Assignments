@@ -1,6 +1,8 @@
 
 #include "../scene/skeleton.h"
 #include<iostream>
+#include "../lib/quat.h"
+#include "../lib/vec3.h"
 
 const float groundY = -3;
 
@@ -176,20 +178,39 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         // Skin vertex i. Note that its position is given in object bind space.
         // std::cout << "skin-1" << std::endl;
         if(map.count(i) <= 0){continue;}
-        Vec3 num;
+        // Vec3 num;
+        Quat QR = Quat(0.0f, 0.0f, 0.0f, 0.0f);
+        Quat QT = Quat(0.0f, 0.0f, 0.0f, 0.0f);
         float den = 0.0;
         // std::cout << "skin0" << std::endl;
         for(Joint* j : map.at(i)){
             Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos);
             float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos)).norm());
+            Mat4 m = j->joint_to_posed() * jointToJ2bInv[j];
+            // Vec3 v_ij = m * (verts[i].pos - this->base_pos_orig);
             
-            Vec3 v_ij = (j->joint_to_posed() * jointToJ2bInv[j] * (verts[i].pos - this->base_pos_orig));
-            
-            num+= v_ij * dist_ij_inv;
-            den+= dist_ij_inv;
+            Quat qr = Quat(m);
+            Vec3 t = Vec3(m[0][3], m[1][3], m[3][3]);
+            Quat qt = Quat(qr, t);
+            QR = QR + dist_ij_inv*qr; 
+            QT = QT + dist_ij_inv*qt;
+
+            // num+= v_ij * dist_ij_inv;
+            // den+= dist_ij_inv;
         }
-        verts[i].pos = num/den + this->base_pos;
-        
+        // verts[i].pos = num/den + this->base_pos;
+        den = QR.norm();
+        QR = QR*(1.0/den);
+        QT = QT*(1.0/den);
+         // Translation from the normalized dual quaternion equals :
+        // 2.f * qblend_e * conjugate(qblend_0)
+        Vec3 v0 = Vec3(QR.x,QR.y,QR.z);
+        Vec3 ve = Vec3(QT.x,QT.y,QT.z);
+        Vec3 trans = (-ve*QR.w + v0*QT.w + cross(v0, ve)) * 2.f;
+
+        // Rotate
+        verts[i].pos = QR.rotate((verts[i].pos - this->base_pos_orig)) + trans + this->base_pos;
+
         lowestVertY = std::min(lowestVertY, verts[i].pos.y);
 
     }
