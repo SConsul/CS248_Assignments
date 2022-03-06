@@ -169,8 +169,10 @@ public:
 
 private:
     Vec3 gravityAcc = Vec3(0.0f, -0.01f, 0.0f);
-    Vec3 base_pos, base_pos_orig, base_vel = Vec3(0.0f, 0.0f, 0.0f), base_acc = Vec3(0.0f, 0.0f, 0.0f);
-    float coeffRestitution = 0.8;
+    Vec3 base_pos, base_pos_orig, base_vel = Vec3(0.0f, 0.0f, -0.05f), base_acc = Vec3(0.0f, 0.0f, 0.0f);
+    float base_height = -1;
+    float coeffRestitution = 0.6, coeffFriction = 0.6;
+    bool touchedGround = false;
     unsigned int root_id, next_id;
     std::unordered_set<Joint*> roots;
     std::unordered_map<Joint*, std::vector<IK_Handle*>> erased;

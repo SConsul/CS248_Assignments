@@ -191,19 +191,27 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         verts[i].pos = num/den + this->base_pos;
         
         lowestVertY = std::min(lowestVertY, verts[i].pos.y);
-
+        this->base_height = this->base_pos.y - lowestVertY;
     }
 
-    if(lowestVertY < groundY){
-        this->base_pos.y += (groundY - lowestVertY);
-        for(size_t i = 0; i < verts.size(); i++) {
-            verts[i].pos.y += groundY - lowestVertY;
-        }
-        if(std::abs(this->base_vel.y) < 0.05){
-            this->base_vel.y = 0;
-        }
-        else{
-            this->base_vel.y *= -this->coeffRestitution;
+    if(this->skeletonType == 0){
+        if(lowestVertY < groundY){
+            this->base_pos.y += (groundY - lowestVertY);
+            for(size_t i = 0; i < verts.size(); i++) {
+                verts[i].pos.y += groundY - lowestVertY;
+            }
+            if(std::abs(this->base_vel.y) < 0.05){
+                this->base_vel.y = 0;
+            }
+            else{
+                this->base_vel.y *= -this->coeffRestitution;
+            }
+            if(std::abs(this->base_vel.x) < 0.01){
+                this->base_vel.x = 0;
+            }
+            if(std::abs(this->base_vel.z) < 0.01){
+                this->base_vel.z = 0;
+            }
         }
     }
 
@@ -266,9 +274,20 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
 
     switch(this->skeletonType){
         case 0:{ // numJoints < 3
-            this->base_pos += this->base_vel + this->base_acc/2;
+            Vec3 fricAcc = Vec3(0.0f, 0.0f, 0.0f);
+            if(this->base_height > 0){
+                if(this->base_pos.y - this->base_height - groundY < 0.1){
+                    fricAcc.x = (this->base_vel.x > 0 ? -1: (this->base_vel.x < 0))* this->coeffFriction*std::abs(this->base_acc.y);
+                    fricAcc.z = (this->base_vel.z > 0 ? -1: (this->base_vel.z < 0))* this->coeffFriction*std::abs(this->base_acc.y);
+                }
+            }
+            
+            Vec3 netAcc = this->base_acc + fricAcc;
+            
+            this->base_pos += this->base_vel + (netAcc) /2;
             this->base_pos.y = std::max(this->base_pos.y, groundY);
-            this->base_vel += this->base_acc;
+            
+            this->base_vel += netAcc;
             break;
         }
 
