@@ -1,6 +1,11 @@
+// Reference/Credits for Dual Quaternion Blend skinning (Implementation approach and helper functions):
+// Rodolphe Vaillant's Homepage: Dual Quaternions Skinning Tutorial
 
+#define USE_DQS 0  // 0: Linear blend skinning, 1: Dual Quaternion Skinning
 #include "../scene/skeleton.h"
 #include<iostream>
+#include "../lib/quat.h"
+#include "../lib/vec3.h"
 
 const float groundY = -3;
 
@@ -174,22 +179,47 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
     float lowestVertY = std::numeric_limits<float>::infinity();
     for(size_t i = 0; i < verts.size(); i++) {
         // Skin vertex i. Note that its position is given in object bind space.
-        // std::cout << "skin-1" << std::endl;
         if(map.count(i) <= 0){continue;}
+
+        #if USE_DQS == 0
         Vec3 num;
+        #else
+        Quat QR = Quat(0.0f, 0.0f, 0.0f, 0.0f);
+        Quat QT = Quat(0.0f, 0.0f, 0.0f, 0.0f);
+        #endif
         float den = 0.0;
-        // std::cout << "skin0" << std::endl;
         for(Joint* j : map.at(i)){
             Vec3 closestPoint = closest_on_line_segment(base_of(j), end_of(j), verts[i].pos);
             float dist_ij_inv = 1.0/((closestPoint - (verts[i].pos)).norm());
-            
-            Vec3 v_ij = (j->joint_to_posed() * jointToJ2bInv[j] * (verts[i].pos - this->base_pos_orig));
-            
+            Mat4 m = j->joint_to_posed() * jointToJ2bInv[j];
+
+            #if USE_DQS == 0
+            Vec3 v_ij = m * (verts[i].pos - this->base_pos_orig);
             num+= v_ij * dist_ij_inv;
             den+= dist_ij_inv;
+            #else
+            Quat qr = Quat(m);
+            Vec3 t = Vec3(m[3][0], m[3][1], m[3][2]);
+            Quat qt = Quat(qr, t);
+            QR = QR + dist_ij_inv*qr; 
+            QT = QT + dist_ij_inv*qt;
+            #endif
         }
+        #if USE_DQS == 0
         verts[i].pos = num/den + this->base_pos;
-        
+        #else
+        den = QR.norm();
+        QR = QR*(1.0/den);
+        QT = QT*(1.0/den);
+         // Translation from the normalized dual quaternion equals :
+        // 2.f * qblend_e * conjugate(qblend_0)
+        Vec3 v0 = Vec3(QR.x,QR.y,QR.z);
+        Vec3 ve = Vec3(QT.x,QT.y,QT.z);
+        Vec3 trans = (ve*QR.w - v0*QT.w + cross(v0, ve)) * 2.f;
+        // Rotate
+        verts[i].pos = QR.rotate((verts[i].pos - this->base_pos_orig)) + trans + this->base_pos;
+        #endif
+
         lowestVertY = std::min(lowestVertY, verts[i].pos.y);
         this->base_height = this->base_pos.y - lowestVertY;
     }
