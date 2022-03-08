@@ -79,7 +79,7 @@ struct Quat {
             }
         }
 
-        w = W; x = -X; y = -Y; z = -Z;
+        w = W; x = X; y = Y; z = Z;
     }
     
     explicit Quat(const Quat& q, const Vec3& t){

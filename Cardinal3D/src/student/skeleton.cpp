@@ -190,7 +190,7 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
             // Vec3 v_ij = m * (verts[i].pos - this->base_pos_orig);
             
             Quat qr = Quat(m);
-            Vec3 t = Vec3(m[0][3], m[1][3], m[3][3]);
+            Vec3 t = Vec3(m[3][0], m[3][1], m[3][2]);
             Quat qt = Quat(qr, t);
             QR = QR + dist_ij_inv*qr; 
             QT = QT + dist_ij_inv*qt;
@@ -206,8 +206,7 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         // 2.f * qblend_e * conjugate(qblend_0)
         Vec3 v0 = Vec3(QR.x,QR.y,QR.z);
         Vec3 ve = Vec3(QT.x,QT.y,QT.z);
-        Vec3 trans = (-ve*QR.w + v0*QT.w + cross(v0, ve)) * 2.f;
-
+        Vec3 trans = (ve*QR.w - v0*QT.w + cross(v0, ve)) * 2.f;
         // Rotate
         verts[i].pos = QR.rotate((verts[i].pos - this->base_pos_orig)) + trans + this->base_pos;
 
