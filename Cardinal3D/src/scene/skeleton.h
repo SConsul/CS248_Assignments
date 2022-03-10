@@ -165,7 +165,7 @@ public:
     SSave splines();
     void restore_splines(const SSave& data);
 
-    int skeletonType = -1;
+    int skeletonType = 1;
 
 private:
     Vec3 gravityAcc = Vec3(0.0f, -0.01f, 0.0f);

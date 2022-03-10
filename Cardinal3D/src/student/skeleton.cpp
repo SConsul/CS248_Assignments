@@ -8,6 +8,7 @@
 #include "../lib/vec3.h"
 
 const float groundY = -3;
+bool firstTime = true;
 
 
 Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
@@ -121,6 +122,11 @@ void Skeleton::find_joints(const GL::Mesh& mesh,
     // Construct a mapping from vertex indices to lists of joints in this skeleton
     // that should effect the vertex at that index. A joint should effect a vertex
     // if it is within Joint::radius distance of the bone's line segment in bind position.
+    std::cout << "find_joints0" << std::endl;
+    if(firstTime){
+        this->base_pos_orig = base_pos;
+        firstTime = false;
+    }
 
     const std::vector<GL::Mesh::Vert>& verts = mesh.verts();
 
@@ -291,12 +297,16 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
     // TODO(Animation): Task 2
     // Do several iterations of Jacobian Transpose gradient descent for IK
 
+    if(firstTime){
+        this->base_pos_orig = base_pos;
+        firstTime = false;
+    }
     if(this->skeletonType == -1){
         int numJoints = 0;
         for_joints([&](Joint* j){numJoints++;});
         this->skeletonType = (numJoints >= 3);
         assert(this->skeletonType != -1);
-        this->base_pos_orig = base_pos;
+        
         if(this->skeletonType == 0){
             this->base_acc = this->gravityAcc;
         }
