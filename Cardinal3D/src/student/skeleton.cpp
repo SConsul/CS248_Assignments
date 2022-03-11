@@ -7,9 +7,11 @@
 #include "../lib/quat.h"
 #include "../lib/vec3.h"
 
-const float groundY = -3;
 bool firstTime = true;
-
+#define ANIMATE 1
+#if ANIMATE
+const float groundY = -3;
+#endif
 
 Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
 
@@ -122,9 +124,15 @@ void Skeleton::find_joints(const GL::Mesh& mesh,
     // Construct a mapping from vertex indices to lists of joints in this skeleton
     // that should effect the vertex at that index. A joint should effect a vertex
     // if it is within Joint::radius distance of the bone's line segment in bind position.
-    std::cout << "find_joints0" << std::endl;
     if(firstTime){
+        // this->base_pos = Vec3(5,0,0);
         this->base_pos_orig = base_pos;
+        int numJoints = 0;
+        for_joints([&](Joint* j){numJoints++;});
+        this->skeletonType = (numJoints >= 3);
+        if(this->skeletonType == 0){
+            this->base_acc = this->gravityAcc;
+        }
         firstTime = false;
     }
 
@@ -230,6 +238,7 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
         this->base_height = this->base_pos.y - lowestVertY;
     }
 
+    #if ANIMATE
     if(this->skeletonType == 0){
         if(lowestVertY < groundY){
             this->base_pos.y += (groundY - lowestVertY);
@@ -250,6 +259,7 @@ void Skeleton::skin(const GL::Mesh& input, GL::Mesh& output,
             }
         }
     }
+    #endif
 
     std::vector<GL::Mesh::Index> idxs = input.indices();
     output.recreate(std::move(verts), std::move(idxs));
@@ -298,22 +308,21 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
     // Do several iterations of Jacobian Transpose gradient descent for IK
 
     if(firstTime){
+        // this->base_pos = Vec3(5,0,0);
         this->base_pos_orig = base_pos;
-        firstTime = false;
-    }
-    if(this->skeletonType == -1){
         int numJoints = 0;
         for_joints([&](Joint* j){numJoints++;});
         this->skeletonType = (numJoints >= 3);
-        assert(this->skeletonType != -1);
-        
         if(this->skeletonType == 0){
             this->base_acc = this->gravityAcc;
         }
+        firstTime = false;
+        std::cout << "BPO " << this->base_pos_orig << std::endl; 
     }
 
     switch(this->skeletonType){
         case 0:{ // numJoints < 3
+        #if ANIMATE
             Vec3 fricAcc = Vec3(0.0f, 0.0f, 0.0f);
             if(this->base_height > 0){
                 if(this->base_pos.y - this->base_height - groundY < 0.1){
@@ -328,7 +337,10 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
             this->base_pos.y = std::max(this->base_pos.y, groundY);
             
             this->base_vel += netAcc;
+
+            std::cout << "BP " << this->base_pos << ", BV " << this->base_vel << ", BA " << this->base_acc << std::endl;
             break;
+        #endif
         }
 
         case 1:{
