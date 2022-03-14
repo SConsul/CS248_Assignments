@@ -1,7 +1,7 @@
 // Reference/Credits for Dual Quaternion Blend skinning (Implementation approach and helper functions):
 // Rodolphe Vaillant's Homepage: Dual Quaternions Skinning Tutorial
 
-#define USE_DQS 0  // 0: Linear blend skinning, 1: Dual Quaternion Skinning
+#define USE_DQS 1  // 0: Linear blend skinning, 1: Dual Quaternion Skinning
 #include "../scene/skeleton.h"
 #include<iostream>
 #include "../lib/quat.h"
@@ -10,7 +10,7 @@
 bool firstTime = true;
 #define ANIMATE 1
 #if ANIMATE
-const float groundY = -3;
+const float groundY = -0.6;
 #endif
 
 Vec3 closest_on_line_segment(Vec3 start, Vec3 end, Vec3 point) {
@@ -303,12 +303,14 @@ void Joint::compute_gradient(Vec3 target, Vec3 current) {
 
 }
 
+bool aboveGround = true;//false;
+
 void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
     // TODO(Animation): Task 2
     // Do several iterations of Jacobian Transpose gradient descent for IK
 
     if(firstTime){
-        // this->base_pos = Vec3(5,0,0);
+        // this->base_pos = Vec3(0,3,0);
         this->base_pos_orig = base_pos;
         int numJoints = 0;
         for_joints([&](Joint* j){numJoints++;});
@@ -324,8 +326,11 @@ void Skeleton::step_ik(std::vector<IK_Handle*> active_handles) {
         case 0:{ // numJoints < 3
         #if ANIMATE
             Vec3 fricAcc = Vec3(0.0f, 0.0f, 0.0f);
+            // if(this->base_pos.y - this->base_height - groundY > 0.1){
+            //     aboveGround = true;
+            // }
             if(this->base_height > 0){
-                if(this->base_pos.y - this->base_height - groundY < 0.1){
+                if((this->base_pos.y - this->base_height - groundY < 0.1) && aboveGround){
                     fricAcc.x = (this->base_vel.x > 0 ? -1: (this->base_vel.x < 0))* this->coeffFriction*std::abs(this->base_acc.y);
                     fricAcc.z = (this->base_vel.z > 0 ? -1: (this->base_vel.z < 0))* this->coeffFriction*std::abs(this->base_acc.y);
                 }
